@@ -2,9 +2,11 @@
 Updated version of Passable Gamer's LCD Marquee Controller
 
 His version is [here on YouTube](https://youtu.be/wy0asRc0yLA?si=WObEnVR3QmIBuntf).
-His version is actually an updated/modified version of [Texacate's Visual-RetroPie-Control-Maps-master](https://github.com/Texacate/Visual-RetroPie-Control-MapsVisual-RetroPie-Control-Maps-master)
+His version is actually an updated/modified version of [Texacate's Visual-RetroPie-Control-Maps](https://github.com/Texacate/Visual-RetroPie-Control-Maps)
 
-This version doesn't need Texacate's version installed first. 
+This version doesn't need Texacate's server installed first. 
+You will need Texacate's client. 
+
 
 To install- (this assume you are using a user of Pi and the scripts are assuming that as well)
 1) Image a Pi with a Lite version of PiOS (Trixie was used when I did this.)

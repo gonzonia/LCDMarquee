@@ -1,0 +1,13 @@
+[Unit]
+Description=Splash Screen
+DefaultDependencies=no
+After=local-fs.target
+
+[Service]
+ExecStart=/usr/bin/fim -a -q /home/pi/marquees/splashscreen.png
+ExecStop=dd if=/dev/zero of=/dev/fb0
+StandardInput=tty
+StandardOutput=tty
+
+[Install]
+WantedBy=sysinit.target

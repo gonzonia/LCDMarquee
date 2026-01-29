@@ -1,0 +1,14 @@
+[Unit]
+Description=Marquee Image
+DefaultDependencies=no
+After=multi-user.target
+
+[Service]
+Type=simple
+User=root
+SupplementaryGroups=video
+ExecStart=/home/pi/bin/display_image_rotated.sh
+ExecStop=-dd if=/dev/zero of=/dev/fb0
+
+[Install]
+WantedBy=multi-user.target

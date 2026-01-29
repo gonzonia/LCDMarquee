@@ -1,0 +1,18 @@
+[Unit]
+Description=Marquee Video
+DefaultDependencies=no
+After=multi-user.target
+
+[Service]
+Type=simple
+User=pi
+Group=pi
+SupplementaryGroups=video
+EnvironmentFile=/home/pi/bin/videoarg.txt
+ExecStart=/usr/bin/mpv --loop --no-audio --vo=drm --drm-connector=HDMI-A-1 --video-rotate=270 "${Video}"
+Restart=always
+RestartSec=2
+ExecStop=-killall mpv
+
+[Install]
+WantedBy=multi-user.target

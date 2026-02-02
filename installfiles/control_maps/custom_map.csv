@@ -1,0 +1,23 @@
+#  File: custom_map.csv
+#
+# Place all user-specific maps here. This is the first file searched. 
+# Overrides mapping in primary_map.csv, or secondary_map.csv 
+#
+
+# --------------------------------------
+# Useful maps for debugging
+# --------------------------------------
+MAME,1,2,3,4,5,6,7,8,9,10
+EmulationStation,Favorite,Random,PageUp,Back,Start,PageDn
+RetroPad,Y,X,L,B,A,R
+P1_iPac,L-ctrl,L-alt,space,L-shift,Z,X
+P2_iPac,A,S,Q,W,I,K
+
+# --------------------------------------
+# Add your custom maps below whenever rearranging buttons in mame or retroarch.
+# --------------------------------------
+NeoGeo,A-red,C-grn,,B-yel,D-blu,,
+20pacgal,Ms.P(1P),,Galaga(1P),Ms.P(2P),Fire,Galaga(2P)
+pacman,Speed
+astdelux,,Thrust,Fire,Shields,,,
+asteroid,,Thrust,Fire,Hyperspace,,,

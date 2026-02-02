@@ -39,11 +39,33 @@ print("***** Stopping LCD Marquee Controller Services (Services may not exist ye
 os.system("sudo systemctl stop simpleServer.service")
 os.system("sudo systemctl stop MarqueeImage.service")
 os.system("sudo systemctl stop MarqueeVideo.service")
+os.system("sudo systemctl stop HideConsole.service")
+os.system("sudo systemctl stop SplashScreen.service")
+
+
 
 #Copy original simpleServer.py.ORIGINAL file
 print("***** Copy simpleServer.py.ORIGINAL file *****")
 if not os.path.exists("/home/pi/bin/simpleServer.py.ORIGINAL"):
     os.system("sudo cp /home/pi/installfiles/bin/simpleServer.py.ORIGINAL /home/pi/bin/simpleServer.py.ORIGINAL")
+
+#create needed directories
+if not os.path.exists("/home/pi/bin"):
+    os.makedirs("/home/pi/bin")
+    os.system("sudo chmod 777 /home/pi/bin")
+
+if not os.path.exists("/home/pi/marquees"):
+    os.makedirs("/home/pi/marquees")
+    os.system("sudo chmod 777 /home/pi/marquees")    
+
+if not os.path.exists("/home/pi/marquees/arcade"):
+    os.makedirs("/home/pi/marquees/arcade")
+    os.system("sudo chmod 777 /home/pi/marquees/arcade") 
+          
+if not os.path.exists("/home/pi/control_maps"):
+    os.makedirs("/home/pi/control_maps")
+    os.system("sudo chmod 777 -R /home/pi/control_maps") 
+
 
 #Copy new simpleServer.py file
 print("***** Copy new simpleServer.py file *****")
@@ -59,6 +81,15 @@ if os.path.exists("/home/pi/bin/display_image_rotated.sh"):
     os.remove("/home/pi/bin/display_image_rotated.sh")
 os.system("sudo cp /home/pi/installfiles/bin/display_image_rotated.sh /home/pi/bin/display_image_rotated.sh")
 os.system("sudo chmod +x /home/pi/bin/display_image_rotated.sh")
+
+#Copy control-map files
+print("***** Copy Control Map files *****")
+defaultimganswer=query_yes_no("Do you wish to replace existing control map files? (Select n if you created custom images)")
+if defaultimganswer == True:
+	if os.path.exists("/home/pi/control_maps"):
+    	os.system("sudo mv /home/pi/control_maps /home/pi/control_maps.OLD")
+os.system("sudo cp -R /home/pi/installfiles/control_maps /home/pi/control_maps")
+os.system("sudo chmod +x /home/pi/control_maps/button_map.sh")
 
 #Ask if new default.png file should be created and if so, copy new file.
 print("***** Copy new default.png file *****")
@@ -83,7 +114,7 @@ if defaultimganswer == True:
 print("***** Copy new splashscreen.png file *****")
 if os.path.exists("/home/pi/marquees/splashscreen.png"):
     os.system("sudo cp /home/pi/marquees/splashscreen.png /home/pi/marquees/splashscreen.png.OLD")
-    os.remove("/home/pi/marquees/splashscreen.png")
+    os.remove("/home/pi/marquees/splashscreen.png")    
 os.system("sudo cp /home/pi/installfiles/marquees/splashscreen.png /home/pi/marquees/splashscreen.png")
 
 # Create folders for systems used to hold marquee image files
@@ -175,6 +206,9 @@ if not os.path.exists("/home/pi/marquees/intellivision"):
 if not os.path.exists("/home/pi/marquees/macintosh"):
     os.makedirs("/home/pi/marquees/macintosh")
     os.system("sudo chmod 777 /home/pi/marquees/macintosh")
+if not os.path.exists("/home/pi/marquees/mame"):
+    os.makedirs("/home/pi/marquees/mame")
+    os.system("sudo chmod 777 /home/pi/marquees/mame")    
 if not os.path.exists("/home/pi/marquees/mame-advmame"):
     os.makedirs("/home/pi/marquees/mame-advmame")
     os.system("sudo chmod 777 /home/pi/marquees/mame-advmame")
@@ -315,6 +349,7 @@ os.system("sudo apt-get -y install fim")
 #Copy services to appropriate places
 print("***** Installing LCD Marquee Services... *****")
 os.system("sudo cp /home/pi/installfiles/bin/services/SplashScreen.service /etc/systemd/system/SplashScreen.service")
+os.system("sudo cp /home/pi/installfiles/bin/services/HideConsole.service /etc/systemd/system/HideConsole.service")
 os.system("sudo cp /home/pi/installfiles/bin/services/MarqueeImage.service /lib/systemd/system/MarqueeImage.service")
 os.system("sudo cp /home/pi/installfiles/bin/services/MarqueeVideo.service /lib/systemd/system/MarqueeVideo.service")
 os.system("sudo cp /home/pi/installfiles/bin/services/simpleServer.service /lib/systemd/system/simpleServer.service")
@@ -322,6 +357,7 @@ os.system("sudo cp /home/pi/installfiles/bin/services/simpleServer.service /lib/
 #Set permissions on services so they will execute
 print("***** Setting permissions on LCD Marquee Services... *****")
 os.system("sudo chmod 644 /etc/systemd/system/SplashScreen.service")
+os.system("sudo chmod 644 /etc/systemd/system/HideConsole.service")
 os.system("sudo chmod 644 /lib/systemd/system/MarqueeImage.service")
 os.system("sudo chmod 644 /lib/systemd/system/MarqueeVideo.service")
 os.system("sudo chmod 644 /lib/systemd/system/simpleServer.service")
@@ -334,55 +370,80 @@ os.system("sudo systemctl daemon-reload")
 print("***** Set SplashScreen service to run on bootup... *****")
 os.system("sudo systemctl enable SplashScreen.service")
 
+#Enable the Hide Consoler service to start automatically on bootup.
+print("***** Set SplashScreen service to run on bootup... *****")
+os.system("sudo systemctl enable HideConsole.service")
+
 print("***** Set SimpleServer service to run on bootup... *****")
 os.system("sudo systemctl enable simpleServer.service")
 
 #Make copy of config.txt and cmdline.txt files
 print("***** Backing up config.txt and cmdline.txt... *****")
-os.system("sudo cp /boot/config.txt /boot/config.BACKUP")
-os.system("sudo cp /boot/cmdline.txt /boot/cmdline.BACKUP")
+os.system("sudo cp /boot/firmware/config.txt /boot/firmware/config.BACKUP")
+os.system("sudo cp /boot/firmware/cmdline.txt /boot/firmware/cmdline.BACKUP")
 
 #Append line to the config.txt file to disable the splash screen
 print("***** Update config.txt file... *****")
 print("Will now edit the config.txt file. File will be updated with line")
 print("disable_splash=1 to disable rainbow splash screen at boot up.")
-configanswer=query_yes_no("Do you wish to update config.txt? (Select n if you already updated file)")
+configanswer=query_yes_no("Do you wish to update config.txt? Requires sudo. (Select n if you already updated file)")
 if configanswer == True:
-    os.system("sudo chmod 755 /boot/config.txt")
-    with open("/boot/config.txt", "a") as myfile:
+    cmdpath = "/boot/firmware/config.txt"
+    if not os.path.exists(cmdpath):
+        cmdpath = "/boot/config.txt"
+        
+    os.system("sudo chmod 755 /boot/firmware/config.txt")
+    with open("/boot/firmware/config.txt", "a") as myfile:
         myfile.write("disable_splash=1\n")
     myfile.close()
     print("config.txt has been updated")
 else:
     print("config.txt will not be updated")
-
 #Copy new cmdline.txt file and set permissions on new cmdline.txt file
+#This might not be working!
 print("***** Update cmdline.txt file... *****")
 print("Will now edit the cmdline.txt file to disable all text on bootup.")
-cmdlineanswer=query_yes_no("Do you wish to update cmdline.txt? (Select n if you already updated file)")
+cmdlineanswer=query_yes_no("Do you wish to update cmdline.txt? Requires sudo. (Select n if you already updated file)")
 if cmdlineanswer == True:
-    if os.path.exists("/boot/cmdline.txt"):
-       existfile=open("/boot/cmdline.txt","r")
-       existline=(existfile.readline())
-       existline=existline.replace("\n","")
-       existfile.close
-       currcmdlineuppercase=existline.upper()
-       currcmdlinemixed=existline.split(" ")
-       currcmdline=currcmdlineuppercase.split(" ")
-    newvalues = ["console=tty3","logo.nologo","quiet","loglevel=3","vt.global_cursor_default=0"]
-    appendvalues = []
-    for x in newvalues:
-        if x.upper() not in currcmdline:
-            appendvalues.append(x)
-    currcmdlinemixed.extend(appendvalues)
-    newcmdline = " ".join(currcmdlinemixed)
-    if os.path.exists("/boot/cmdline.txt"):
-        os.remove("/boot/cmdline.txt")
-    with open("/boot/cmdline.txt","w+") as newcmdlinefile:
-        newcmdlinefile.write(newcmdline + "\n")
-    newcmdlinefile.close()
-    os.system("sudo chmod 755 /boot/cmdline.txt")
-    print("cmdline.txt has been updated")
+    # Determine the correct path
+    cmdpath = "/boot/firmware/cmdline.txt"
+    if not os.path.exists(cmdpath):
+        cmdpath = "/boot/cmdline.txt"
+
+    if os.path.exists(cmdpath):
+        # 1. Read existing content
+        with open(cmdpath, "r") as f:
+            existline = f.read().strip()
+
+        # 2. Split into parts and filter out empty strings and ANY existing console settings
+        # This handles the replacement of console=tty1 or any other console
+        parts = [p for p in existline.split(" ") if p and not p.startswith("console=")]
+
+        # 3. Define our desired values
+        # console=tty3 is added first to ensure it's in the list
+        new_values = ["console=tty3", "logo.nologo", "quiet", "loglevel=3", "vt.global_cursor_default=0"]
+
+        # 4. Add the new values only if they aren't already present
+        for val in new_values:
+            if val not in parts:
+                parts.append(val)
+
+        # 5. Reconstruct the line
+        new_cmdline = " ".join(parts)
+
+        # 6. Overwrite the file
+        try:
+            with open(cmdpath, "w") as newcmdlinefile:
+                newcmdlinefile.write(new_cmdline + "\n")
+            
+            # Set permissions
+            os.chmod(cmdpath, 0o755)
+            print(f"Successfully updated {cmdpath}")
+            print(f"New settings: {new_cmdline}")
+        except PermissionError:
+            print("ERROR: Permission denied. Please run this script with 'sudo'.")
+    else:
+        print(f"ERROR: Could not find cmdline.txt at /boot/firmware/ or /boot/")
 else:
     print("cmdline.txt will not be updated")
 

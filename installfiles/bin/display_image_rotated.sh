@@ -1,4 +1,8 @@
 #!/bin/bash
+
+# Immediately clear screen to black to prevent terminal text from showing
+dd if=/dev/zero of=/dev/fb0 bs=1M count=1 2>/dev/null
+
 source /home/pi/bin/imagearg.txt
 echo "Starting fim with image: ${Image}"
 

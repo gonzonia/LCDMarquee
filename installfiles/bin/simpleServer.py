@@ -12,7 +12,10 @@
 #       https://retropie.org.uk/forum/topic/21464/show-control-panel-layout-before-game-starts-in-retropie-just-like-arcade1up-does/76?_=1581179183756
 #       For the original code and files other than simpleServer.py, you can visit Texacate GitHub site below:
 #       https://github.com/Texacate/Visual-RetroPie-Control-Maps
-# Version: 2.01 (Current Version)- Added line in setupServer function that stops the SplashScreen service.
+# Gonzonia- 
+# Version  3.1 (current)  Added control map images
+# Version  3.0   Fixed for trixie. Switched to fim and mpv
+# Version: 2.01  Added line in setupServer function that stops the SplashScreen service.
 #          2.0 - Added support to play default video or default image in /home/pi/marquees folder.
 #              - Services are now used to display images and videos. MarqueeImage service is used to display image (using FIM) and MarqueeVideo service is used to play video 
 #                (omxplayer). These two services MUST be added for the program to function properly.
@@ -197,47 +200,53 @@ def openImage(path):
     # Store the status of the MarqueeImage service in a variable
     imgservicerun = os.system("sudo systemctl is-active MarqueeImage")
 
-    # Check if image enviornoment file exists, image environement file is used for the MarqueeImage service
-    # and contains the path to the image file to load. If the image environment file exists, store the previous 
-    # image path into a variable and then delete and rebuild with the new path to the image file 
+    # Check if image environment file exists
     if os.path.exists("/home/pi/bin/imagearg.txt"):
        existfile=open("/home/pi/bin/imagearg.txt","r")
        existline=(existfile.readline())
        existfile.close
        os.remove("/home/pi/bin/imagearg.txt")
-       currentpath=existline.split("=", 1)    
+       currentpath=existline.split("=", 1)
+    else:
+       print("DEBUG: imagearg.txt does not exist")    
+       currentpath = ["Image", ""]
+
     newfile=open("/home/pi/bin/imagearg.txt","w+")
     newfile.write("Image=" + path + "\n")
     newfile.close()
-
+    
     time.sleep(0.5)
-
+    
     # Set rights to image environment file so everyone has access to it.
     proc = os.system("sudo chmod 777 /home/pi/bin/imagearg.txt")
 
-    # Set command to stop and start the MarqueeImage service and stop the MarqueeVideo service to unload and load the image.
+    # Pre-generate the resized image so it's ready instantly
+    print("Pre-processing image for instant display...")
+    os.system("sudo rm -f /tmp/marquee_resized.png")
+    os.system(f"sudo convert '{path}' -resize 800x480 -background black -gravity center -extent 800x480 /tmp/marquee_resized.png")
+    os.system("sudo chmod 666 /tmp/marquee_resized.png")
+
+    # Set command to stop and start the MarqueeImage service and stop the MarqueeVideo service
     cmdimagestop = "sudo systemctl stop MarqueeImage"
     cmdimagestart = "sudo systemctl start MarqueeImage"
     cmdvideostop = "sudo systemctl stop MarqueeVideo"
 
-    # Print on screen MarqueeVideo service is going to be stopped and the stop the service.
+    # Stop video service
     print("cmdvideostop(" + cmdvideostop + ")")
     proc = os.system(cmdvideostop)
     
-    # If the current path and the new path are not the same OR the MarqueeImage service is not running,
-    # then stop and start the MarqueeImage service.
-    if True:
-       
-    # Print on screen MarqueeImage service is going to be stopped and then stop the service.
-       print("cmdimagestop(" + cmdimagestop + ")")
-       proc = os.system(cmdimagestop)
+    # Always restart to show new image
+    print("cmdimagestop(" + cmdimagestop + ")")
+    proc = os.system(cmdimagestop)
 
-    # Print on screen MarqueeImage service is going to be started and then start the service.
-       print("cmdimagestart(" + cmdimagestart + ")")
-       proc = os.system(cmdimagestart)
+    # Immediately clear to black and show new image
+    os.system("dd if=/dev/zero of=/dev/fb0 bs=1M count=1 2>/dev/null")
+    
+    print("cmdimagestart(" + cmdimagestart + ")")
+    proc = os.system(cmdimagestart)
 
-    # Return error code for MarqueeImage service.
-       return proc
+    return proc
+
 
 def openVideo(path):
     #=================================================================================================
@@ -375,28 +384,89 @@ def dataTransfer(conn):
             print("Command: PATH" +  " / Data: " + dataMessage[1])
             reply = pathBuilder(dataMessage[1])
 
-    # If the command sent is OPEN, then print the command on screen run openVideo or openImage function depending
-    # on if the path to file has an extension .mp4 or .png.
-        elif command == 'OPEN':
-            print("Command: OPEN" +  " / Data: " + dataMessage[1])
+  # If the command sent is SELECTED, then show the marquee for the selected game
+        elif command == 'SELECTED':
+            print("Command: SELECTED" +  " / Data: " + dataMessage[1])
 
         # Get the path to the image or video by running the pathBuilder function.
             path = pathBuilder(dataMessage[1])
 
-        # Get the last the characters of the path. This should be the extention of the video or image file. Print
-        # the results on the screen.
+        # Get the last three characters of the path. This should be the extension of the video or image file.
             path_file_ext = path[-3:]
             print("Path = " + path)
-            print("Extention = " + path_file_ext)
+            print("Extension = " + path_file_ext)
 
         # If the extension ends with mp4, then run the openVideo function to play the video, else run the openImage
         # function to display the image.
             if path_file_ext == 'mp4':
                 proc = openVideo(path)
-                reply = "Opened Video: " + path
+                reply = "Selected Video: " + path
             else:
                 proc = openImage(path)
-                reply = "Opened Image: " + path
+                reply = "Selected Image: " + path
+
+        # If the command sent is OPEN, then generate and show the control mapping for the game
+        # If the command sent is OPEN, then generate and show the control mapping for the game
+        elif command == 'OPEN':
+            print("Command: OPEN" +  " / Data: " + dataMessage[1])
+
+            # Parse the system and rom
+            args = dataMessage[1].split(' ', 1)
+            sys = args[0]
+            rom = args[1]
+            
+            # Path to the control map generator
+            generator_dir = "/home/pi/control_maps"
+            generated_map = f"{generator_dir}/arcade/{rom}.png"
+            loading_image = f"{generator_dir}/loading.png"
+            
+            # Show loading screen first
+            print("Displaying loading screen...")
+            if os.path.isfile(loading_image):
+                openImage(loading_image)
+            
+            print(f"Generating control map for {rom}")
+            
+            # Run the button_map.sh script to generate the control map
+            # The script creates the image at ./arcade/<rom>.png
+            try:
+                print(f"Running: {generator_dir}/button_map.sh {rom}")
+                print(f"Working directory: {generator_dir}")
+                
+                result = subprocess.run(
+                    [f"{generator_dir}/button_map.sh", rom],
+                    cwd=generator_dir,
+                    capture_output=True,
+                    text=True,
+                    timeout=30
+                )
+                
+                print(f"Return code: {result.returncode}")
+                print(f"Generator output: {result.stdout}")
+                if result.stderr:
+                    print(f"Generator errors: {result.stderr}")
+                
+                # Check if the control map was generated
+                if os.path.isfile(generated_map):
+                    print(f"Control map generated successfully: {generated_map}")
+                    control_path = generated_map
+                else:
+                    print(f"Control map generation failed, falling back to marquee")
+                    # Fall back to showing the marquee instead
+                    control_path = pathBuilder(dataMessage[1])
+                    
+            except subprocess.TimeoutExpired:
+                print("Control map generation timed out, falling back to marquee")
+                control_path = pathBuilder(dataMessage[1])
+            except Exception as e:
+                print(f"Error generating control map: {e}")
+                control_path = pathBuilder(dataMessage[1])
+            
+            print("Control map path = " + control_path)
+            
+            # Display the control map image
+            proc = openImage(control_path)
+            reply = "Opened Control Map: " + control_path
 
     # If the command sent is CLOSE, the print the command on the screen and run the closeImage and closeVideo function.
         elif command == 'CLOSE':
@@ -436,8 +506,7 @@ def dataTransfer(conn):
     # If the command cannot be found, then print the command could not be found set the reply variable to unknown command
         else:
             print("Unknown command: " + command)
-            reply = 'Unknown command. Valid commands are GET, REPEAT <string>, EXIT, KILL, SHUTDOWN'
-
+            reply = 'Unknown command. Valid commands are GET, REPEAT <string>, SELECTED, OPEN, CLOSE, EXIT, KILL, SHUTDOWN'
     # Send the reply back to the client
         conn.sendall(str.encode(reply))
         print("Data has been sent!")

@@ -1,0 +1,13 @@
+[Unit]
+Description=Hide Console Text on TTY1
+After=systemd-user-sessions.service
+
+[Service]
+Type=oneshot
+Environment="TERM=linux"
+ExecStart=/bin/systemctl stop getty@tty1.service
+ExecStart=/usr/bin/setterm -cursor off -blank 0 -clear all </dev/tty1 >/dev/tty1
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

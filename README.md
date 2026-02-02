@@ -36,14 +36,14 @@ I've also added the ability to send a "SHUTDOWN" command and changed the Marquee
 
 I'm using this on an RCADE system running on an AtGames Legends Ultimate cabinet, not retropie. As a result, there are some additional scripts I've created that can be triggered at events like shutting down. This way the pi shuts down gracefully when the RCADE is shutdown. I have it showing a marquee when selecting a game, and then when the game is open it shows the control map. 
 
-To accomplish this and have the control maps match, I had to change the layout in the button map script as well. 
-ORGINAL:
-Y(1) X(2) L(3)
-B(4) A(5) R(6)
+To accomplish this and have the control maps match, I had to change the layout in the button map script as well.   
+ORGINAL:  
+Y(1) X(2) L(3)  
+B(4) A(5) R(6)  
 
-ALU:
-X(4) Y(5) Z(6)
-A(1) B(2) C(3)
+ALU:  
+X(4) Y(5) Z(6)  
+A(1) B(2) C(3)  
 
 This is only set to work with mame and arcade games at the moment and they might not all be there. Feel free to let me know if something isn't working or is mising. 
 

@@ -220,12 +220,12 @@ def openImage(path):
     # Set rights to image environment file so everyone has access to it.
     proc = os.system("sudo chmod 777 /home/pi/bin/imagearg.txt")
 
-    # Pre-generate the resized image so it's ready instantly
+# Pre-generate the resized image so it's ready instantly
     print("Pre-processing image for instant display...")
-    os.system("sudo rm -f /tmp/marquee_resized.png")
-    os.system(f"sudo convert '{path}' -resize 800x480 -background black -gravity center -extent 800x480 /tmp/marquee_resized.png")
-    os.system("sudo chmod 666 /tmp/marquee_resized.png")
-
+    os.system("sudo rm -f /tmp/marquee_preprocessed.png")
+    os.system(f"sudo convert '{path}' -resize 800x480 -background black -gravity center -extent 800x480 -rotate 270 /tmp/marquee_preprocessed.png")
+    os.system("sudo chmod 666 /tmp/marquee_preprocessed.png")
+    
     # Set command to stop and start the MarqueeImage service and stop the MarqueeVideo service
     cmdimagestop = "sudo systemctl stop MarqueeImage"
     cmdimagestart = "sudo systemctl start MarqueeImage"

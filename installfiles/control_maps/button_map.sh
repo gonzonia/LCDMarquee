@@ -119,10 +119,10 @@ function get_parent_clone () {
 function map_buttons_retro_pad_mame () {
 rpB="$b1"
 rpA="$b2"
-rpR="$b3"
-rpY="$b4"
-rpX="$b5"
-rpL="$b6"
+rpR="$b6"
+rpY="$b3"
+rpX="$b4"
+rpL="$b5"
 }
 
 function map_buttons_retro_pad_fba () {

@@ -62,9 +62,7 @@ if not os.path.exists("/home/pi/marquees/arcade"):
     os.makedirs("/home/pi/marquees/arcade")
     os.system("sudo chmod 777 /home/pi/marquees/arcade") 
           
-if not os.path.exists("/home/pi/control_maps"):
-    os.makedirs("/home/pi/control_maps")
-    os.system("sudo chmod 777 -R /home/pi/control_maps") 
+
 
 
 #Copy new simpleServer.py file
@@ -86,10 +84,17 @@ os.system("sudo chmod +x /home/pi/bin/display_image_rotated.sh")
 print("***** Copy Control Map files *****")
 defaultimganswer=query_yes_no("Do you wish to replace existing control map files? (Select n if you created custom images)")
 if defaultimganswer == True:
-	if os.path.exists("/home/pi/control_maps"):
-    	os.system("sudo mv /home/pi/control_maps /home/pi/control_maps.OLD")
+    if os.path.exists("/home/pi/control_maps"):
+        os.system("sudo mv /home/pi/control_maps /home/pi/control_maps.OLD")
+  
+    #Why were we making this earlier if only to rename it and not set permissions? 
+    if not os.path.exists("/home/pi/control_maps"):
+    os.makedirs("/home/pi/control_maps")
+    os.system("sudo chmod 777 -R /home/pi/control_maps")   
+        
 os.system("sudo cp -R /home/pi/installfiles/control_maps /home/pi/control_maps")
 os.system("sudo chmod +x /home/pi/control_maps/button_map.sh")
+
 
 #Ask if new default.png file should be created and if so, copy new file.
 print("***** Copy new default.png file *****")

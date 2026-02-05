@@ -22,7 +22,9 @@ To install- (this assumes you are using a user of Pi and the scripts are assumin
 
 7) Copy over any marquees into the appropriate system folder (for RCADE the arcade collection all go into MAME).
 
-***Changes***
+***Changes***  
+
+
 **It now uses MPV to play video.** It also allows for rotating the screen if necessary. 
 
 You can change the rotation in `display_image_rotated.sh` if you don't need it rotated (It's currently set to 270). 

@@ -1,10 +1,16 @@
 [Unit]
 Description=simpleServer
-After=multi-user.target
+After=graphical.target network.target
 
 [Service]
-Type=idle
-ExecStart=/usr/bin/python3 /home/pi/bin/simpleServer.py >> /dev/null &
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/bin
+ExecStart=/usr/bin/python3 /home/pi/bin/simpleServer.py
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
 
 [Install]
-WantedBy=multi-user.target
+WantedBy=graphical.target

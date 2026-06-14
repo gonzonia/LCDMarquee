@@ -89,10 +89,14 @@ if defaultimganswer == True:
   
     #Why were we making this earlier if only to rename it and not set permissions? 
     if not os.path.exists("/home/pi/control_maps"):
-    os.makedirs("/home/pi/control_maps")
-    os.system("sudo chmod 777 -R /home/pi/control_maps")   
+        os.makedirs("/home/pi/control_maps")
+        os.makedirs("/home/pi/control_maps/arcade")
+        os.system("sudo chown -R pi:pi /home/pi/control_maps/")
+        os.system("sudo chmod -R 755 /home/pi/control_maps")
         
-os.system("sudo cp -R /home/pi/installfiles/control_maps /home/pi/control_maps")
+           
+        
+os.system("sudo cp -R /home/pi/installfiles/control_maps /home/pi/")
 os.system("sudo chmod +x /home/pi/control_maps/button_map.sh")
 
 

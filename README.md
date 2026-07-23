@@ -52,3 +52,6 @@ This is only set to work with mame and arcade games at the moment and they might
 I tried running on a Pi Zero W and it couldn't handle video, was also slow to start up, switch screens, and generate control maps.
 
 I switched to a Pi 5 8GB. 
+
+***Permission was obtained to include R-CADE images in this project. R-Cade and all associated R-Cade content is legal property of Retro-Center and goverened by the R-Cade license agreement. Unauthorized distribution, duplication, or usage is prohibited.<BR>
+See the LICENSE.md file at the top-level directory of the Retro-Center github releases at https://github.com/retro-center/rcade_releases/blob/master/LICENSE.md***

@@ -149,6 +149,10 @@ def setupServer():
     imgnewfile.write("Image=" + imagearg_path + "\n")
     imgnewfile.close()
     os.system("sudo chmod 777 /home/pi/bin/imagearg.txt")
+    
+        # Remove marqueearg.txt so MarqueeBitLCD uses its built-in default
+    if os.path.exists("/home/pi/bin/marqueearg.txt"):
+        os.remove("/home/pi/bin/marqueearg.txt")
 
     # Start services if any default files were found
     if control_path or marquee_path:

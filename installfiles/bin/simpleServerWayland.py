@@ -69,6 +69,10 @@ def setupServer():
     except socket.error as msg:
         print(msg)
     print("Socket bind comlete.")
+    
+    # Always stop MarqueeImage on startup - video takes priority
+    os.system("sudo systemctl stop MarqueeImage")
+    os.system("sudo systemctl stop MarqueeVideo")
 
     #Set paths to the default image and video. Also set command to run video or image to nothing.
     initvideo = image_dir + "/default" + video_types[0]
@@ -191,58 +195,6 @@ def pathBuilder(sysrom):
     
     
 def openImage(path):
-    #=================================================================================================
-    # Function name: openImage
-    # Purpose: To change the image file that is displayed when a new game is selected.
-    # Accepts: path - The path were the new image file to be displayed is located at.
-    # Result:  The image file on the display is changed.
-    #=================================================================================================
-    # Print on screen what function is being run and image that will be loaded.
-    print("openImage (" + path + ")")
-
-    # Store the status of the MarqueeImage service in a variable
-    imgservicerun = os.system("sudo systemctl is-active MarqueeImage")
-
-    # Check if image environment file exists
-    if os.path.exists("/home/pi/bin/imagearg.txt"):
-       existfile=open("/home/pi/bin/imagearg.txt","r")
-       existline=(existfile.readline())
-       existfile.close
-       os.remove("/home/pi/bin/imagearg.txt")
-       currentpath=existline.split("=", 1)
-    else:
-       print("DEBUG: imagearg.txt does not exist")    
-       currentpath = ["Image", ""]
-
-    newfile=open("/home/pi/bin/imagearg.txt","w+")
-    newfile.write("Image=" + path + "\n")
-    newfile.close()
-    
-    time.sleep(0.5)
-    
-    # Set rights to image environment file so everyone has access to it.
-    proc = os.system("sudo chmod 777 /home/pi/bin/imagearg.txt")
-
-    # Set command to stop and start the MarqueeImage service and stop the MarqueeVideo service
-    cmdimagestop = "sudo systemctl stop MarqueeImage"
-    cmdimagestart = "sudo systemctl start MarqueeImage"
-    cmdvideostop = "sudo systemctl stop MarqueeVideo"
-
-    # Stop video service
-    print("cmdvideostop(" + cmdvideostop + ")")
-    proc = os.system(cmdvideostop)
-    
-    # Always restart to show new image
-    print("cmdimagestop(" + cmdimagestop + ")")
-    proc = os.system(cmdimagestop)
-
-    print("cmdimagestart(" + cmdimagestart + ")")
-    proc = os.system(cmdimagestart)
-
-    return proc
-
-
-def openImage(path):
     print("openImage (" + path + ")")
 
     if os.path.exists("/home/pi/bin/imagearg.txt"):
@@ -261,29 +213,57 @@ def openImage(path):
 
     time.sleep(0.5)
 
-    cmdvideostop = "sudo systemctl stop MarqueeVideo"
-    cmdimagestop = "sudo systemctl stop MarqueeImage"
-    cmdimagestart = "sudo systemctl start MarqueeImage"
-
-    # Stop video service
-    print("cmdvideostop(" + cmdvideostop + ")")
-    proc = os.system(cmdvideostop)
-
-    # Check if mpv is already running via IPC socket
-    if os.path.exists("/tmp/mpv-image.sock"):
-        # Send new file to running mpv instance (no restart = no desktop flash)
-        print(f"Sending new image to running mpv: {path}")
+    # Try to send to running mpv instances via IPC (no desktop flash)
+    if os.path.exists("/tmp/mpv-video.sock"):
+        # Send image to video mpv instance
+        print(f"Sending image to video mpv: {path}")
+        cmd = f'echo \'{{"command": ["loadfile", "{path}"]}}\' | socat - /tmp/mpv-video.sock'
+        os.system(cmd)
+    elif os.path.exists("/tmp/mpv-image.sock"):
+        # Send to image mpv instance
+        print(f"Sending image to image mpv: {path}")
         cmd = f'echo \'{{"command": ["loadfile", "{path}"]}}\' | socat - /tmp/mpv-image.sock'
-        proc = os.system(cmd)
+        os.system(cmd)
     else:
-        # mpv not running, start the service
-        print("mpv not running, starting MarqueeImage service")
-        print("cmdimagestop(" + cmdimagestop + ")")
-        proc = os.system(cmdimagestop)
-        print("cmdimagestart(" + cmdimagestart + ")")
-        proc = os.system(cmdimagestart)
+        # No mpv running, start MarqueeImage service
+        print("No mpv running, starting MarqueeImage service")
+        os.system("sudo systemctl stop MarqueeVideo")
+        os.system("sudo systemctl stop MarqueeImage")
+        os.system("sudo systemctl start MarqueeImage")
+    
+    return 0
 
-    return proc
+
+def openVideo(path):
+    print("openVideo (" + path + ")")
+
+    if os.path.exists("/home/pi/bin/videoarg.txt"):
+       existfile=open("/home/pi/bin/videoarg.txt","r")
+       existline=(existfile.readline())
+       existfile.close
+       os.remove("/home/pi/bin/videoarg.txt")
+       currentpath=existline.split("=", 1)
+    else:
+       currentpath = ["Video", ""]
+
+    newfile=open("/home/pi/bin/videoarg.txt","w+")
+    newfile.write("Video=" + path + "\n")
+    newfile.close()
+    os.system("sudo chmod 777 /home/pi/bin/videoarg.txt")
+
+    # Try to send to running mpv via IPC (no desktop flash)
+    if os.path.exists("/tmp/mpv-video.sock"):
+        print(f"Sending video to running mpv: {path}")
+        cmd = f'echo \'{{"command": ["loadfile", "{path}"]}}\' | socat - /tmp/mpv-video.sock'
+        os.system(cmd)
+    else:
+        # No mpv running, start MarqueeVideo service
+        print("No mpv running, starting MarqueeVideo service")
+        os.system("sudo systemctl stop MarqueeImage")
+        os.system("sudo systemctl stop MarqueeVideo")
+        os.system("sudo systemctl start MarqueeVideo")
+
+    return 0
 
 
 def closeImage():
@@ -461,8 +441,8 @@ def dataTransfer(conn):
     # If the command sent is CLOSE, the print the command on the screen and run the closeImage and closeVideo function.
         elif command == 'CLOSE':
             print("Command: CLOSE")
-            #closeImage()
-            #closeVideo()
+            closeImage()
+            closeVideo()
             reply = "Closed Image"
 
     # If the command sent is REPEAT, then print the command on the screen and run the REPEAT function.

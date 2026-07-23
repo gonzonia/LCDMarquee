@@ -1,14 +1,18 @@
 [Unit]
 Description=Marquee Image
-DefaultDependencies=no
-After=multi-user.target
+After=graphical.target
 
 [Service]
 Type=simple
-User=root
-SupplementaryGroups=video
-ExecStart=/home/pi/bin/display_image_rotated.sh
-ExecStop=-dd if=/dev/zero of=/dev/fb0
+User=pi
+Group=pi
+Environment="WAYLAND_DISPLAY=wayland-0"
+Environment="XDG_RUNTIME_DIR=/run/user/1000"
+EnvironmentFile=/home/pi/bin/imagearg.txt
+ExecStartPre=/bin/bash -c 'until [ -S /run/user/1000/wayland-0 ]; do sleep 1; done'
+ExecStart=/usr/bin/mpv --no-audio --vo=gpu --gpu-context=wayland --fullscreen --video-rotate=270 --image-display-duration=inf --input-ipc-server=/tmp/mpv-image.sock "${Image}"
+ExecStop=-pkill -f "mpv.*image-display-duration"
+Restart=no
 
 [Install]
-WantedBy=multi-user.target
+WantedBy=graphical.target

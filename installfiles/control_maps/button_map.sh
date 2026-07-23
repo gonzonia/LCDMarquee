@@ -305,18 +305,18 @@ function get_font_sizes () {
 function gen_annotated_png_6btn_cp () {  
   local sw=5  
   $MAGICK convert -size 2400x1440 xc:black \
-    $btn1_img -gravity south  -geometry -550+550 -composite \
-    $btn2_img -gravity south  -geometry   +0+675 -composite \
-    $btn3_img -gravity south  -geometry +550+550 -composite \
-    $btn4_img -gravity south  -geometry -550+50  -composite \
-    $btn5_img -gravity south  -geometry   +0+175 -composite \
-    $btn6_img -gravity south  -geometry +550+50  -composite \
-    -gravity south -font $fontB -pointsize $pt1 -fill white -stroke black -strokewidth $sw -annotate -550+675 "$cp1" \
-    -gravity south -font $fontB -pointsize $pt2 -fill white -stroke black -strokewidth $sw -annotate   +0+850 "$cp2" \
-    -gravity south -font $fontB -pointsize $pt3 -fill white -stroke black -strokewidth $sw -annotate +550+675 "$cp3" \
-    -gravity south -font $fontB -pointsize $pt4 -fill white -stroke black -strokewidth $sw -annotate -550+175 "$cp4" \
-    -gravity south -font $fontB -pointsize $pt5 -fill white -stroke black -strokewidth $sw -annotate   +0+350 "$cp5" \
-    -gravity south -font $fontB -pointsize $pt6 -fill white -stroke black -strokewidth $sw -annotate +550+175 "$cp6" \
+    $btn1_img -gravity center  -geometry -550-200 -composite \
+    $btn2_img -gravity center  -geometry   +0-400 -composite \
+    $btn3_img -gravity center  -geometry +550-200 -composite \
+    $btn4_img -gravity center  -geometry -550+300  -composite \
+    $btn5_img -gravity center  -geometry   +0+100 -composite \
+    $btn6_img -gravity center  -geometry +550+300  -composite \
+    -gravity center -font $fontB -pointsize $pt1 -fill white -stroke black -strokewidth $sw -annotate -550+25 "$cp1" \
+    -gravity center -font $fontB -pointsize $pt2 -fill white -stroke black -strokewidth $sw -annotate   +0-175 "$cp2" \
+    -gravity center -font $fontB -pointsize $pt3 -fill white -stroke black -strokewidth $sw -annotate +550+25 "$cp3" \
+    -gravity center -font $fontB -pointsize $pt4 -fill white -stroke black -strokewidth $sw -annotate -550+525 "$cp4" \
+    -gravity center -font $fontB -pointsize $pt5 -fill white -stroke black -strokewidth $sw -annotate   +0+325 "$cp5" \
+    -gravity center -font $fontB -pointsize $pt6 -fill white -stroke black -strokewidth $sw -annotate +550+525 "$cp6" \
     ./tmp/2_annotated.png
 }
 
@@ -442,7 +442,9 @@ function gen_rom_button_map () {
   else
     gen_annotated_png_6btn_cp
   fi
-  gen_logo_png $rom
+  $MAGICK convert ./tmp/2_annotated.png \
+    -resize 800x480 ./arcade/$rom.png
+  echo "Final image ./arcade/$rom.png"
 }
 
 echo "========================"

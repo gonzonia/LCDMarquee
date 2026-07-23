@@ -5,10 +5,12 @@
 #Argument 2 = the file name of the game being started without the path and without the extension
 #Argument 3 = the full path to the game being started
 
-	# DEBUG: Log all arguments to a file
+DEBUG=false
+
 LOGFILE="/rcade/share/userscripts/game-selected/marquee-selected-debug.log"
-rm -f "$LOGFILE"
-#LOGFILE= "/dev/null"
+if [ "$DEBUG" != "true" ]; then
+  rm -f "$LOGFILE"
+fi
 echo "===========================================" >> $LOGFILE
 echo "Script called at: $(date)" >> $LOGFILE
 echo "Number of arguments: $#" >> $LOGFILE

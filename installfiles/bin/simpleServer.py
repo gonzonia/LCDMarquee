@@ -13,6 +13,8 @@
 #       For the original code and files other than simpleServer.py, you can visit Texacate GitHub site below:
 #       https://github.com/Texacate/Visual-RetroPie-Control-Maps
 # Gonzonia- 
+# Version  4.1  Added per-screen default file resolution (default_control/default_marquee priority chains).
+# Version  4.0  Changed to work with Wayland when using a desktop version of PiOS.
 # Version  3.1 (current)  Added control map images
 # Version  3.0   Fixed for trixie. Switched to fim and mpv
 # Version: 2.01  Added line in setupServer function that stops the SplashScreen service.
@@ -37,6 +39,8 @@ import os
 import socket
 import subprocess
 import time
+import threading
+from datetime import datetime
 
 # Set univeral variables that will be used throughout the program:
 # host - Host name or IP address for the host. This is not used and can remain blank.
@@ -49,6 +53,55 @@ port = 5561
 image_dir  = "/home/pi/marquees"
 image_types = [".png", ".jpg", ".jpeg", ".gif"]  # List of image extensions to try
 video_types = [".mp4", ".avi", ".mkv"]   # List of video extensions to try
+            
+# Global flag to control the clock thread
+clock_running = False
+
+def resolveDefaultControl():
+    """Return the best available default file for the Waveshare/control screen.
+    Priority: default_control.mp4 -> default.mp4 -> default_control.png -> default.png"""
+    candidates = [
+        image_dir + "/default_control.mp4",
+        image_dir + "/default.mp4",
+        image_dir + "/default_control.png",
+        image_dir + "/default.png",
+    ]
+    for path in candidates:
+        if os.path.isfile(path):
+            return path
+    return None
+
+def resolveDefaultMarquee():
+    """Return the best available default file for the BitLCD/marquee screen.
+    Priority: default_marquee.mp4 -> default_marquee.png -> default.png"""
+    candidates = [
+        image_dir + "/default_marquee.mp4",
+        image_dir + "/default_marquee.png",
+        image_dir + "/default.png",
+    ]
+    for path in candidates:
+        if os.path.isfile(path):
+            return path
+    return None
+
+def restoreDefaults():
+    """Restore both screens to their best available default file."""
+    control_path = resolveDefaultControl()
+    if control_path:
+        print(f"Restoring control screen: {control_path}")
+        if control_path.endswith(tuple(video_types)):
+            openVideo(control_path)
+        else:
+            openImage(control_path)
+    else:
+        print("No default file found for control screen.")
+
+    marquee_path = resolveDefaultMarquee()
+    if marquee_path:
+        print(f"Restoring marquee screen: {marquee_path}")
+        showOnBitLCD(marquee_path)
+    else:
+        print("No default file found for marquee screen.")
 
 def setupServer():
     #=================================================================================================
@@ -69,51 +122,51 @@ def setupServer():
     except socket.error as msg:
         print(msg)
     print("Socket bind comlete.")
+    
+    # Stop all display services on startup
+    os.system("sudo systemctl stop MarqueeImage")
+    os.system("sudo systemctl stop MarqueeVideo")
+    os.system("sudo systemctl stop MarqueeBitLCD")
 
-    #Set paths to the default image and video. Also set command to run video or image to nothing.
-    initvideo = image_dir + "/default" + video_types[0]
-    initimage = image_dir + "/default" + image_types[0]
-    initcmd = "nothing"
+    # Resolve best default files for each screen independently
+    control_path = resolveDefaultControl()
+    marquee_path = resolveDefaultMarquee()
 
-    # Delete the video arguments file, if it exists, and then create a new one with the Video path
-    # pointing to /home/pi/marquees/default.mp4.
+    # Write arg files with resolved paths (fall back to legacy defaults if nothing found)
+    videoarg_path = control_path if control_path and control_path.endswith(tuple(video_types)) else image_dir + "/default.mp4"
+    imagearg_path = control_path if control_path and not control_path.endswith(tuple(video_types)) else image_dir + "/default.png"
+
     if os.path.exists("/home/pi/bin/videoarg.txt"):
         os.remove("/home/pi/bin/videoarg.txt")
-    vidnewfile=open("/home/pi/bin/videoarg.txt","w+")
-    vidnewfile.write("Video=" + initvideo + "\n")
-    vidnewfile.close
+    vidnewfile = open("/home/pi/bin/videoarg.txt", "w+")
+    vidnewfile.write("Video=" + videoarg_path + "\n")
+    vidnewfile.close()
+    os.system("sudo chmod 777 /home/pi/bin/videoarg.txt")
 
-    # Set full permissiones to the video arguments file.
-    proc = os.system("sudo chmod 777 /home/pi/bin/videoarg.txt")
-
-    # Delete the image arguments file, if it exists, and then create a new one with the Image path
-    # pointing to /home/pi/marquees/default.png.
     if os.path.exists("/home/pi/bin/imagearg.txt"):
         os.remove("/home/pi/bin/imagearg.txt")
-    imgnewfile=open("/home/pi/bin/imagearg.txt","w+")
-    imgnewfile.write("Image=" + initimage + "\n")
+    imgnewfile = open("/home/pi/bin/imagearg.txt", "w+")
+    imgnewfile.write("Image=" + imagearg_path + "\n")
     imgnewfile.close()
+    os.system("sudo chmod 777 /home/pi/bin/imagearg.txt")
 
-    # Set full permissiones to the image arguments file.
-    proc = os.system("sudo chmod 777 /home/pi/bin/imagearg.txt")
-
-    # If the file /home/pi/marquees/default.mp4 exists, then set the initcmd variable to
-    # start the MarqueeVideo service.
-    if (os.path.isfile(initvideo)):
-        initcmd = "sudo systemctl start MarqueeVideo"
-    
-    # If the file /home/pi/marquees/default.png exists, then set the initcmd variable to
-    # start the MarqueeVideo service.
-    if not (os.path.isfile(initvideo)):
-        initcmd = "sudo systemctl start MarqueeImage"
-
-    #If initcmd variable has video or image command, run it.
-    #Will pause for 2 seconds so that the command prompt
-    #does not overwrite the image.
-    if initcmd != 'nothing':
+    # Start services if any default files were found
+    if control_path or marquee_path:
         os.system("sudo systemctl stop SplashScreen")
         time.sleep(2)
-        proc = os.system(initcmd)
+
+        # Start control screen service based on file type
+        if control_path:
+            print(f"Starting control screen with: {control_path}")
+            if control_path.endswith(tuple(video_types)):
+                os.system("sudo systemctl start MarqueeVideo")
+            else:
+                os.system("sudo systemctl start MarqueeImage")
+
+        # Start BitLCD service (it will load its own default via MarqueeBitLCD service)
+        if marquee_path:
+            print(f"Starting marquee screen with: {marquee_path}")
+            os.system("sudo systemctl start MarqueeBitLCD")
 
     # Return the result
     return s
@@ -136,9 +189,21 @@ def pathBuilder(sysrom):
     print("pathBuilder(" + sysrom + ")")
 
     args = sysrom.split(' ', 1)
-    sys = args[0]
-    rom = args[1]
+    sys = args[0].lower().strip()
+    rom = args[1].lower().strip()
 
+    print("system=" + sys)
+    print("rom=" + rom)
+    
+	 # Read current theme
+    theme = "default"
+    if os.path.exists("/home/pi/bin/theme.txt"):
+        with open("/home/pi/bin/theme.txt", "r") as f:
+            theme = f.read().strip()
+    print("theme=" + theme)
+    
+    theme_dir =  "/themes/" + theme
+    
     # 1. Look for game-specific image (try all image types)
     path = None
     for ext in image_types:
@@ -163,7 +228,23 @@ def pathBuilder(sysrom):
                 path = test_path
                 break
    
-    # 4. If no system files, use generic default image
+   	# 4. If not system default, check for a top-level system theme image
+    if not path:
+        for ext in image_types:
+            test_path = image_dir + theme_dir + "/" + sys + ext
+            if os.path.isfile(test_path):
+                path = test_path
+                break   	
+                
+   	# 5. If not system default, check for a top-level system theme video
+    if not path:
+        for ext in video_types:
+            test_path = image_dir + theme_dir + "/" + sys + ext
+            if os.path.isfile(test_path):
+                path = test_path
+                break   	              
+   	
+    # 6. If no system files, use generic default image
     if not path:
         for ext in image_types:
             test_path = image_dir + "/default" + ext
@@ -171,7 +252,7 @@ def pathBuilder(sysrom):
                 path = test_path
                 break
    
-    # 5. Only if no default image exists, use default video
+    # 7. Only if no default image exists, use default video
     if not path:
         for ext in video_types:
             test_path = image_dir + "/default" + ext
@@ -179,7 +260,7 @@ def pathBuilder(sysrom):
                 path = test_path
                 break
   
-    # 6. If nothing exists, show error
+    # 8. If nothing exists, show error
     if not path:
        path = "Video or Image not found."
     
@@ -188,19 +269,8 @@ def pathBuilder(sysrom):
     
     
 def openImage(path):
-    #=================================================================================================
-    # Function name: openImage
-    # Purpose: To change the image file that is displayed when a new game is selected.
-    # Accepts: path - The path were the new image file to be displayed is located at.
-    # Result:  The image file on the display is changed.
-    #=================================================================================================
-    # Print on screen what function is being run and image that will be loaded.
     print("openImage (" + path + ")")
 
-    # Store the status of the MarqueeImage service in a variable
-    imgservicerun = os.system("sudo systemctl is-active MarqueeImage")
-
-    # Check if image environment file exists
     if os.path.exists("/home/pi/bin/imagearg.txt"):
        existfile=open("/home/pi/bin/imagearg.txt","r")
        existline=(existfile.readline())
@@ -208,99 +278,124 @@ def openImage(path):
        os.remove("/home/pi/bin/imagearg.txt")
        currentpath=existline.split("=", 1)
     else:
-       print("DEBUG: imagearg.txt does not exist")    
        currentpath = ["Image", ""]
 
     newfile=open("/home/pi/bin/imagearg.txt","w+")
     newfile.write("Image=" + path + "\n")
     newfile.close()
-    
+    os.system("sudo chmod 777 /home/pi/bin/imagearg.txt")
+
     time.sleep(0.5)
-    
-    # Set rights to image environment file so everyone has access to it.
-    proc = os.system("sudo chmod 777 /home/pi/bin/imagearg.txt")
 
-# Pre-generate the resized image so it's ready instantly
-    print("Pre-processing image for instant display...")
-    os.system("sudo rm -f /tmp/marquee_preprocessed.png")
-    os.system(f"sudo convert '{path}' -resize 800x480 -background black -gravity center -extent 800x480 -rotate 270 /tmp/marquee_preprocessed.png")
-    os.system("sudo chmod 666 /tmp/marquee_preprocessed.png")
+    # Try to send to running mpv instances via IPC (no desktop flash)
+    if os.path.exists("/tmp/mpv-video.sock"):
+        # Send image to video mpv instance
+        print(f"Sending image to video mpv: {path}")
+        cmd = f'echo \'{{"command": ["loadfile", "{path}"]}}\' | socat - /tmp/mpv-video.sock'
+        os.system(cmd)
+    elif os.path.exists("/tmp/mpv-image.sock"):
+        # Send to image mpv instance
+        print(f"Sending image to image mpv: {path}")
+        cmd = f'echo \'{{"command": ["loadfile", "{path}"]}}\' | socat - /tmp/mpv-image.sock'
+        os.system(cmd)
+    else:
+        # No mpv running, start MarqueeImage service
+        print("No mpv running, starting MarqueeImage service")
+        os.system("sudo systemctl stop MarqueeVideo")
+        os.system("sudo systemctl stop MarqueeImage")
+        os.system("sudo systemctl start MarqueeImage")
     
-    # Set command to stop and start the MarqueeImage service and stop the MarqueeVideo service
-    cmdimagestop = "sudo systemctl stop MarqueeImage"
-    cmdimagestart = "sudo systemctl start MarqueeImage"
-    cmdvideostop = "sudo systemctl stop MarqueeVideo"
-
-    # Stop video service
-    print("cmdvideostop(" + cmdvideostop + ")")
-    proc = os.system(cmdvideostop)
-    
-    # Always restart to show new image
-    print("cmdimagestop(" + cmdimagestop + ")")
-    proc = os.system(cmdimagestop)
-
-    # Immediately clear to black and show new image
-    os.system("dd if=/dev/zero of=/dev/fb0 bs=1M count=1 2>/dev/null")
-    
-    print("cmdimagestart(" + cmdimagestart + ")")
-    proc = os.system(cmdimagestart)
-
-    return proc
+    return 0
 
 
 def openVideo(path):
-    #=================================================================================================
-    # Function name: openVideo
-    # Purpose: To change the video that is played when a new system is selected.
-    # Accepts: path - The path were the new video file to be played is located at.
-    # Result:  The video file playing is changed.
-    #=================================================================================================
-    # Print on screen what function is being run and image that will be loaded.
     print("openVideo (" + path + ")")
 
-    vidservicerun = os.system("sudo systemctl is-active MarqueeVideo")
-
-    # Check if video enviornoment file exists, video environement file is used for the MarqueeVideo service
-    # and contains the path to the video file to load. If the video environment file exists, store the previous 
-    # video path into a variable and then delete and rebuild with the new path to the video file 
     if os.path.exists("/home/pi/bin/videoarg.txt"):
        existfile=open("/home/pi/bin/videoarg.txt","r")
        existline=(existfile.readline())
        existfile.close
        os.remove("/home/pi/bin/videoarg.txt")
-       currentpath=existline.split("=", 1)   
+       currentpath=existline.split("=", 1)
+    else:
+       currentpath = ["Video", ""]
+
     newfile=open("/home/pi/bin/videoarg.txt","w+")
-    newfile.write("Video=" + path)
-    newfile.close
+    newfile.write("Video=" + path + "\n")
+    newfile.close()
+    os.system("sudo chmod 777 /home/pi/bin/videoarg.txt")
 
-    # Set rights to video environment file so everyone has access to it.
-    proc = os.system("sudo chmod 777 /home/pi/bin/videoarg.txt")
+    # Try to send to running mpv via IPC (no desktop flash)
+    if os.path.exists("/tmp/mpv-video.sock"):
+        print(f"Sending video to running mpv: {path}")
+        cmd = f'echo \'{{"command": ["loadfile", "{path}"]}}\' | socat - /tmp/mpv-video.sock'
+        os.system(cmd)
+    else:
+        # No mpv running, start MarqueeVideo service
+        print("No mpv running, starting MarqueeVideo service")
+        os.system("sudo systemctl stop MarqueeImage")
+        os.system("sudo systemctl stop MarqueeVideo")
+        os.system("sudo systemctl start MarqueeVideo")
 
-    # Set command to stop and start the MarqueeImage service and stop the MarqueeVideo service to unload and load the image.
-    cmdimagestop = "sudo systemctl stop MarqueeImage"
-    cmdvideostart = "sudo systemctl start MarqueeVideo"
-    cmdvideostop = "sudo systemctl stop MarqueeVideo"
+    return 0
 
-    # Print on screen MarqueeImage service is going to be stopped and the stop the service.
-    print("cmdimagestop(" + cmdimagestop + ")")
-    proc = os.system(cmdimagestop)
+def showOnBitLCD(path):
+    """Send an image or video to the BitLCD marquee display"""
+    print(f"showOnBitLCD ({path})")
+    if os.path.exists("/tmp/mpv-bitlcd.sock"):
+        cmd = f'echo \'{{"command": ["loadfile", "{path}"]}}\' | socat - /tmp/mpv-bitlcd.sock'
+        os.system(cmd)
+        print(f"Sent to BitLCD: {path}")
+    else:
+        print("BitLCD mpv socket not found, restarting service...")
+        os.system("sudo systemctl restart MarqueeBitLCD")
+        time.sleep(2)
+        if os.path.exists("/tmp/mpv-bitlcd.sock"):
+            cmd = f'echo \'{{"command": ["loadfile", "{path}"]}}\' | socat - /tmp/mpv-bitlcd.sock'
+            os.system(cmd)
+
+
+def clock_thread():
+    """Background loop that updates the time on the BitLCD every second"""
+    while clock_running:
+        if os.path.exists("/tmp/mpv-bitlcd.sock"):
+            # Get current time in 12-hour format (e.g., "09:27 PM"). 
+            # lstrip("0") removes the leading zero for single-digit hours.
+            current_time = datetime.now().strftime("%I:%M %p").lstrip("0")
+            
+            # Send the time to mpv, telling it to display for 1100ms (so it doesn't flicker between updates)
+            cmd = f'echo \'{{"command": ["show-text", "{current_time}", 1100]}}\' | socat - /tmp/mpv-bitlcd.sock'
+            os.system(cmd)
+        time.sleep(1)
+
+def showBitLCDClock():
+    """Formats the OSD and starts the clock thread"""
+    global clock_running
+    print("showBitLCDClock()")
     
-    # If the current path and the new path are not the same OR the MarqueeVideo service is not running,
-    # then stop and start the MarqueeImage service.
-    if path != currentpath[1].strip() or vidservicerun != 0:
-      
-    # Print on screen MarqueeVideo service is going to be stopped and the stop the service.
-       print("cmdvideostop(" + cmdvideostop + ")")
-       proc = os.system(cmdvideostop)
+    if os.path.exists("/tmp/mpv-bitlcd.sock"):
+        # Format the OSD placement and size
+        os.system(f'echo \'{{"command": ["set_property", "osd-align-x", "left"]}}\' | socat - /tmp/mpv-bitlcd.sock')
+        os.system(f'echo \'{{"command": ["set_property", "osd-align-y", "top"]}}\' | socat - /tmp/mpv-bitlcd.sock')
+        os.system(f'echo \'{{"command": ["set_property", "osd-font-size", 40]}}\' | socat - /tmp/mpv-bitlcd.sock')
+        
+    if not clock_running:
+        clock_running = True
+        # Start the thread in the background so it doesn't block the rest of simpleServer.py
+        threading.Thread(target=clock_thread, daemon=True).start()
 
-    # Print on screen MarqueeVideo service is going to be stopped and the stop the service.
-       print("cmdvideostart(" + cmdvideostart + ")")
-       proc = os.system(cmdvideostart)
-
-    # Return error code for MarqueeImage service.
-       return proc
-
-
+def hideBitLCDClock():
+    """Stops the clock thread and clears the screen"""
+    global clock_running
+    print("hideBitLCDClock()")
+    
+    clock_running = False # This tells the background thread to stop looping
+    
+    if os.path.exists("/tmp/mpv-bitlcd.sock"):
+        # Immediately push an empty string to wipe the clock off the screen
+        cmd = f'echo \'{{"command": ["show-text", ""]}}\' | socat - /tmp/mpv-bitlcd.sock'
+        os.system(cmd)
+        
 def closeImage():
     #=================================================================================================
     # Function name: closeImage
@@ -387,25 +482,20 @@ def dataTransfer(conn):
   # If the command sent is SELECTED, then show the marquee for the selected game
         elif command == 'SELECTED':
             print("Command: SELECTED" +  " / Data: " + dataMessage[1])
-
-        # Get the path to the image or video by running the pathBuilder function.
+            hideBitLCDClock()
             path = pathBuilder(dataMessage[1])
-
-        # Get the last three characters of the path. This should be the extension of the video or image file.
             path_file_ext = path[-3:]
             print("Path = " + path)
             print("Extension = " + path_file_ext)
-
-        # If the extension ends with mp4, then run the openVideo function to play the video, else run the openImage
-        # function to display the image.
-            if path_file_ext == 'mp4':
-                proc = openVideo(path)
-                reply = "Selected Video: " + path
-            else:
-                proc = openImage(path)
-                reply = "Selected Image: " + path
-
-        # If the command sent is OPEN, then generate and show the control mapping for the game
+            # Show marquee on BitLCD
+            showOnBitLCD(path)
+            
+             # Show base control map on Waveshare when browsing
+            base_control_map = "/home/pi/control_maps/base_control_map.png"
+            if os.path.isfile(base_control_map):
+                openImage(base_control_map)
+            reply = "Selected: " + path
+            
         # If the command sent is OPEN, then generate and show the control mapping for the game
         elif command == 'OPEN':
             print("Command: OPEN" +  " / Data: " + dataMessage[1])
@@ -419,61 +509,65 @@ def dataTransfer(conn):
             generator_dir = "/home/pi/control_maps"
             generated_map = f"{generator_dir}/arcade/{rom}.png"
             loading_image = f"{generator_dir}/loading.png"
-            
-            # Show loading screen first
-            print("Displaying loading screen...")
-            if os.path.isfile(loading_image):
-                openImage(loading_image)
-            
-            print(f"Generating control map for {rom}")
-            
-            # Run the button_map.sh script to generate the control map
-            # The script creates the image at ./arcade/<rom>.png
-            try:
-                print(f"Running: {generator_dir}/button_map.sh {rom}")
-                print(f"Working directory: {generator_dir}")
+
+            # Ensure required directories exist
+            os.makedirs(f"{generator_dir}/arcade", exist_ok=True)
+            os.makedirs(f"{generator_dir}/tmp", exist_ok=True)
+            os.system(f"sudo chmod 777 {generator_dir}/arcade {generator_dir}/tmp")
+
+            # Check if control map already exists
+            if os.path.isfile(generated_map):
+                print(f"Control map already exists, displaying: {generated_map}")
+                control_path = generated_map
+            else:
+                # Show loading screen while generating
+                print("Displaying loading screen...")
+                if os.path.isfile(loading_image):
+                    openImage(loading_image)
                 
-                result = subprocess.run(
-                    [f"{generator_dir}/button_map.sh", rom],
-                    cwd=generator_dir,
-                    capture_output=True,
-                    text=True,
-                    timeout=30
-                )
+                print(f"Generating control map for {rom}")
                 
-                print(f"Return code: {result.returncode}")
-                print(f"Generator output: {result.stdout}")
-                if result.stderr:
-                    print(f"Generator errors: {result.stderr}")
-                
-                # Check if the control map was generated
-                if os.path.isfile(generated_map):
-                    print(f"Control map generated successfully: {generated_map}")
-                    control_path = generated_map
-                else:
-                    print(f"Control map generation failed, falling back to marquee")
-                    # Fall back to showing the marquee instead
-                    control_path = pathBuilder(dataMessage[1])
+                try:
+                    print(f"Running: {generator_dir}/button_map.sh {rom}")
+                    print(f"Working directory: {generator_dir}")
                     
-            except subprocess.TimeoutExpired:
-                print("Control map generation timed out, falling back to marquee")
-                control_path = pathBuilder(dataMessage[1])
-            except Exception as e:
-                print(f"Error generating control map: {e}")
-                control_path = pathBuilder(dataMessage[1])
+                    result = subprocess.run(
+                        [f"{generator_dir}/button_map.sh", rom],
+                        cwd=generator_dir,
+                        capture_output=True,
+                        text=True,
+                        timeout=30
+                    )
+                    
+                    print(f"Return code: {result.returncode}")
+                    print(f"Generator output: {result.stdout}")
+                    if result.stderr:
+                        print(f"Generator errors: {result.stderr}")
+                    
+                    if os.path.isfile(generated_map):
+                        print(f"Control map generated successfully: {generated_map}")
+                        control_path = generated_map
+                    else:
+                        print(f"Control map generation failed, falling back to marquee")
+                        control_path = pathBuilder(dataMessage[1])
+                        
+                except subprocess.TimeoutExpired:
+                    print("Control map generation timed out, falling back to marquee")
+                    control_path = pathBuilder(dataMessage[1])
+                except Exception as e:
+                    print(f"Error generating control map: {e}")
+                    control_path = pathBuilder(dataMessage[1])
             
             print("Control map path = " + control_path)
-            
-            # Display the control map image
             proc = openImage(control_path)
             reply = "Opened Control Map: " + control_path
 
     # If the command sent is CLOSE, the print the command on the screen and run the closeImage and closeVideo function.
         elif command == 'CLOSE':
             print("Command: CLOSE")
-            #closeImage()
-            #closeVideo()
-            reply = "Closed Image"
+            hideBitLCDClock()
+            restoreDefaults()
+            reply = "Closed - returned to default state"
 
     # If the command sent is REPEAT, then print the command on the screen and run the REPEAT function.
         elif command == 'REPEAT':
@@ -501,12 +595,44 @@ def dataTransfer(conn):
             conn.close()
             time.sleep(1)  # Give time for reply to be sent
             os.system("sudo shutdown -h now")
-            break        
+            break      
+    # If the command sent is REBOOT, reboot the system
+        elif command == 'REBOOT':
+            print("Command: REBOOT")
+            print("Rebooting the system...")
+            reply = "System reboot initiated"
+            conn.sendall(str.encode(reply))
+            conn.close()
+            time.sleep(1)  # Give time for reply to be sent
+            os.system("sudo reboot")
+            break                     
+        elif command == 'SCREENSAVER-START':
+            print("Command: SCREENSAVER-START")
+            screensaver_control_path = image_dir + "/screensaver_control.mp4"
+            screensaver_marquee_path = image_dir + "/screensaver_marquee.mp4"
+            
+            if os.path.isfile(screensaver_marquee_path) and os.path.isfile(screensaver_control_path):
+                print(f"Starting screensavers: {screensaver_marquee_path}, {screensaver_control_path}")
+                showOnBitLCD(screensaver_marquee_path)
+                openVideo(screensaver_control_path)
+                
+                time.sleep(0.5) # Give mpv a half-second to load the video
+                showBitLCDClock() 
 
-    # If the command cannot be found, then print the command could not be found set the reply variable to unknown command
+                
+                reply = "Screensavers started: " + screensaver_marquee_path + "," + screensaver_control_path
+            else:
+                print(f"One of the screensaver files not found: {screensaver_marquee_path} or {screensaver_control_path}")
+                reply = "One of the screensaver files not found: " + screensaver_marquee_path + " or " + screensaver_control_path
+        elif command == 'SCREENSAVER-STOP':
+            print("Command: SCREENSAVER-STOP")
+            hideBitLCDClock()
+            restoreDefaults()
+            reply = "Screensaver stopped - returned to default state"
+            # If the command cannot be found, then print the command could not be found set the reply variable to unknown command
         else:
             print("Unknown command: " + command)
-            reply = 'Unknown command. Valid commands are GET, REPEAT <string>, SELECTED, OPEN, CLOSE, EXIT, KILL, SHUTDOWN'
+            reply = 'Unknown command. Valid commands are GET, REPEAT <string>, SELECTED, OPEN, CLOSE, EXIT, KILL, SHUTDOWN, SCREENSAVER-START, SCREENSAVER-STOP'
     # Send the reply back to the client
         conn.sendall(str.encode(reply))
         print("Data has been sent!")

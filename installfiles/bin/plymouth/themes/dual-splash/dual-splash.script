@@ -1,0 +1,61 @@
+# Get display positions
+waveshare_x = Window.GetX(0);
+waveshare_y = Window.GetY(0);
+bitlcd_x = Window.GetX(1);
+bitlcd_y = Window.GetY(1);
+
+# --- MODIFIED: Detect Boot, Shutdown, or Reboot ---
+mode = Plymouth.GetMode();
+
+if (mode == "boot") {
+    marquee_img = Image("splashscreen_marquee.png");
+    control_img = Image("splashscreen_control.png");
+} else if (mode == "reboot") {
+    # Unique assets for reboot
+    marquee_img = Image("reboot_marquee.png");
+    control_img = Image("reboot_control.png");
+} else {
+    # Default/Shutdown assets
+    marquee_img = Image("shutdown_marquee.png");
+    control_img = Image("shutdown_control.png");
+}
+
+# Main sprites
+marquee_sprite = Sprite(marquee_img);
+control_sprite = Sprite(control_img);
+marquee_sprite.SetZ(10);
+control_sprite.SetZ(10);
+
+# Place main images
+marquee_sprite.SetX(bitlcd_x);
+marquee_sprite.SetY(bitlcd_y);
+control_sprite.SetX(waveshare_x);
+control_sprite.SetY(waveshare_y);
+
+# Load pie progress frames (0 to 100)
+for (i = 0; i <= 100; i++)
+    pie_frames[i] = Image("progress-" + i + ".png");
+
+pie_sprite = Sprite();
+pie_sprite.SetZ(50);
+
+# Center pie in the overlap zone
+overlap_center_x = 960;
+overlap_center_y = 250;
+pie_size = 240;
+
+pie_sprite.SetX(overlap_center_x - pie_size / 2);
+pie_sprite.SetY(overlap_center_y - pie_size / 2);
+
+# The Boot Progress Callback
+fun progress_callback(duration, progress) {
+    frame = Math.Int(progress * 100);
+    
+    if (frame > 100) frame = 100;
+    if (frame < 0) frame = 0;
+    
+    pie_sprite.SetImage(pie_frames[frame]);
+}
+
+# Bind to progress
+Plymouth.SetBootProgressFunction(progress_callback);

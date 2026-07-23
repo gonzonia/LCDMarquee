@@ -1,0 +1,8 @@
+[Plymouth Theme]
+Name=Dual Splash
+Description=Custom dual-monitor splash screen
+ModuleName=script
+
+[script]
+ImageDir=/usr/share/plymouth/themes/dual-splash
+ScriptFile=/usr/share/plymouth/themes/dual-splash/dual-splash.script

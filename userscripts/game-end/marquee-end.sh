@@ -9,8 +9,8 @@ touch $LOGFILE
 echo "Sending command: CLOSE" >> $LOGFILE
 
 python3 /rcade/share/userscripts/simpleClient.py "CLOSE"  >> $LOGFILE 2>&1
-echo "Sending command: OPEN all emulation_station" >> $LOGFILE
+#echo "Sending command: OPEN all emulation_station" >> $LOGFILE
 
-python3 /rcade/share/userscripts/simpleClient.py "OPEN all emulation_station"  >> $LOGFILE 2>&1
+#python3 /rcade/share/userscripts/simpleClient.py "OPEN all emulation_station"  >> $LOGFILE 2>&1
 
 echo "Script completed" >> $LOGFILE

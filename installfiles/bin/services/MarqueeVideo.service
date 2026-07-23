@@ -1,18 +1,20 @@
 [Unit]
 Description=Marquee Video
-DefaultDependencies=no
-After=multi-user.target
+After=graphical.target
 
 [Service]
 Type=simple
 User=pi
 Group=pi
-SupplementaryGroups=video
-EnvironmentFile=/home/pi/bin/videoarg.txt
-ExecStart=/usr/bin/mpv --loop --no-audio --vo=drm --drm-connector=HDMI-A-1 --video-rotate=270 "${Video}"
-Restart=always
+Environment="WAYLAND_DISPLAY=wayland-0"
+Environment="XDG_RUNTIME_DIR=/run/user/1000"
+Environment="Video=/home/pi/marquees/default.mp4"
+EnvironmentFile=-/home/pi/bin/videoarg.txt
+ExecStartPre=/bin/bash -c 'for i in $(seq 1 60); do [ -S /run/user/1000/wayland-0 ] && exit 0; sleep 2; done; exit 1'
+ExecStart=/usr/bin/mpv --loop --no-audio --vo=gpu --gpu-context=wayland --fullscreen --video-rotate=270 --input-ipc-server=/tmp/mpv-video.sock "${Video}"
+Restart=no
 RestartSec=2
-ExecStop=-killall mpv
+ExecStop=-pkill -f "mpv.*mpv-video"
 
 [Install]
-WantedBy=multi-user.target
+WantedBy=graphical.target

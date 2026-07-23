@@ -1,0 +1,1 @@
+Video=/home/pi/marquees/screensaver_control.mp4

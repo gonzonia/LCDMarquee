@@ -7,12 +7,9 @@ rm -f "$LOGFILE"
 touch &LOGFILE
 echo "Initiating arcade shutdown sequence..." >> $LOGFILE
 
-# Notify Home Assistant
-#echo "Notifying Home Assistant..." >> $LOGFILE
-#python3 /rcade/share/userscripts/ha-shutdown.py shutdown
-
 # Send shutdown command to marquee display
 echo "Sending shutdown to marquee display..." >> $LOGFILE
 python3 /rcade/share/userscripts/simpleClient.py "SHUTDOWN"
+
 
 echo "Shutdown sequence complete">> $LOGFILE

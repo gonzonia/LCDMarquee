@@ -1,0 +1,1 @@
+quiet splash video=HDMI-A-1:card1-HDMI-A-1:480x800M@60D video=HDMI-A-2:card1-HDMI-A-2:1920x1080M@60e plymouth.ignore-serial-consoles

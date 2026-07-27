@@ -2,6 +2,9 @@
 import os
 import time
 import sys
+import getpass
+import pwd
+import grp
 
 def query_yes_no(question, default="yes"):
     """Ask a yes/no question via raw_input() and return their answer.
@@ -34,7 +37,100 @@ def query_yes_no(question, default="yes"):
             sys.stdout.write("Please respond with 'yes' or 'no' "
                              "(or 'y' or 'n').\n")
 
-#Althought these service are not running yet, going to try to stop them anyway.
+
+def install_service(installfiles_dir, service_name, dest_dir, replacements):
+    """Read a .service template from installfiles, substitute placeholders
+    (e.g. __USER__, __GROUP__, __UID__, __HOME__), and install it to dest_dir.
+
+    Writing goes through a temp file + 'sudo cp' since the script itself
+    isn't necessarily running as root, only shelling out to sudo.
+    """
+    src = f"{installfiles_dir}/bin/services/{service_name}"
+    with open(src, "r") as f:
+        content = f.read()
+    for placeholder, value in replacements.items():
+        content = content.replace(placeholder, value)
+
+    tmp_path = f"/tmp/{service_name}"
+    with open(tmp_path, "w") as f:
+        f.write(content)
+
+    dest_path = f"{dest_dir}/{service_name}"
+    os.system(f"sudo cp {tmp_path} {dest_path}")
+    os.system(f"sudo chmod 644 {dest_path}")
+    os.remove(tmp_path)
+
+
+def get_invoking_user():
+    """Best-effort detection of the human running the script, even under sudo
+    (where os.getlogin()/getpass.getuser() alone would report 'root')."""
+    return os.environ.get("SUDO_USER") or getpass.getuser()
+
+
+def query_username(default_user):
+    """Ask which user this should be installed for and return the username.
+
+    Leaving the answer blank accepts default_user. Verifies /home/<username>
+    exists before accepting it, since everything else in the script is
+    anchored off that directory.
+    """
+    while True:
+        sys.stdout.write(f"Which user is this install for? [{default_user}]: ")
+        username = input().strip()
+        if not username:
+            username = default_user
+        candidate_home = f"/home/{username}"
+        if not os.path.isdir(candidate_home):
+            sys.stdout.write(f"'{candidate_home}' does not exist. Try again.\n")
+            continue
+        return username
+
+
+# List of EmulationStation system folders that get a marquee subfolder.
+MARQUEE_SYSTEMS = [
+    "3do", "amiga", "amstradcpc", "apple2", "arcade", "atari800", "atari2600",
+    "atari5200", "atari7800", "atarijaquar", "atarilynx", "atarist", "c64",
+    "COCO", "coleco", "daphne", "dragon32", "dreamcast", "fba", "fds",
+    "gameandwatch", "gamegear", "gb", "gba", "gbc", "gc", "intellivision",
+    "macintosh", "mame", "mame-advmame", "mame-libretro", "mame-mame4all",
+    "mastersystem", "megadrive", "msx", "n64", "nds", "neogeo", "nes", "ngp",
+    "ngpc", "oric", "pc", "pcengine", "ps2", "psp", "psx", "samcoupe",
+    "saturn", "scummvm", "sega32x", "segacd", "sg-1000", "snes", "ti99",
+    "trs-80", "vectrex", "videopac", "virtualboy", "wii", "wonderswancolor",
+    "zmachine", "zxspectrum",
+]
+
+
+# ----- Determine target user and derived paths -----
+invoking_user = get_invoking_user()
+username = query_username(invoking_user)
+HOME_DIR = f"/home/{username}"
+BIN_DIR = f"{HOME_DIR}/bin"
+MARQUEES_DIR = f"{HOME_DIR}/marquees"
+CONTROL_MAPS_DIR = f"{HOME_DIR}/control_maps"
+
+# installfiles is always resolved relative to this script's own location,
+# not to any user's home directory, since it ships side-by-side with it
+# regardless of which user is being installed for or who ran the script.
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+INSTALLFILES_DIR = f"{SCRIPT_DIR}/installfiles"
+
+user_info = pwd.getpwnam(username)
+user_uid = user_info.pw_uid
+user_group = grp.getgrgid(user_info.pw_gid).gr_name
+
+SERVICE_REPLACEMENTS = {
+    "__USER__": username,
+    "__GROUP__": user_group,
+    "__UID__": str(user_uid),
+    "__HOME__": HOME_DIR,
+}
+
+print(f"Installing for user '{username}' (uid={user_uid}, group={user_group}, home: {HOME_DIR})")
+print(f"Using install files from: {INSTALLFILES_DIR}")
+
+
+#Although these service are not running yet, going to try to stop them anyway.
 print("***** Stopping LCD Marquee Controller Services (Services may not exist yet) *****")
 os.system("sudo systemctl stop simpleServer.service")
 os.system("sudo systemctl stop MarqueeImage.service")
@@ -46,287 +142,125 @@ os.system("sudo systemctl stop SplashScreen.service")
 
 #Copy original simpleServer.py.ORIGINAL file
 print("***** Copy simpleServer.py.ORIGINAL file *****")
-if not os.path.exists("/home/pi/bin/simpleServer.py.ORIGINAL"):
-    os.system("sudo cp /home/pi/installfiles/bin/simpleServer.py.ORIGINAL /home/pi/bin/simpleServer.py.ORIGINAL")
+if not os.path.exists(f"{BIN_DIR}/simpleServer.py.ORIGINAL"):
+    os.system(f"sudo cp {INSTALLFILES_DIR}/bin/simpleServer.py.ORIGINAL {BIN_DIR}/simpleServer.py.ORIGINAL")
 
 #create needed directories
-if not os.path.exists("/home/pi/bin"):
-    os.makedirs("/home/pi/bin")
-    os.system("sudo chmod 777 /home/pi/bin")
+if not os.path.exists(BIN_DIR):
+    os.makedirs(BIN_DIR)
+    os.system(f"sudo chmod 777 {BIN_DIR}")
 
-if not os.path.exists("/home/pi/marquees"):
-    os.makedirs("/home/pi/marquees")
-    os.system("sudo chmod 777 /home/pi/marquees")    
+if not os.path.exists(MARQUEES_DIR):
+    os.makedirs(MARQUEES_DIR)
+    os.system(f"sudo chmod 777 {MARQUEES_DIR}")
 
-if not os.path.exists("/home/pi/marquees/arcade"):
-    os.makedirs("/home/pi/marquees/arcade")
-    os.system("sudo chmod 777 /home/pi/marquees/arcade") 
-          
+if not os.path.exists(f"{MARQUEES_DIR}/arcade"):
+    os.makedirs(f"{MARQUEES_DIR}/arcade")
+    os.system(f"sudo chmod 777 {MARQUEES_DIR}/arcade")
+
 
 
 
 #Copy new simpleServer.py file
 print("***** Copy new simpleServer.py file *****")
-if os.path.exists("/home/pi/bin/simpleServer.py"):
-    os.system("sudo cp /home/pi/bin/simpleServer.py /home/pi/bin/simpleServer.py.OLD")
-    os.remove("/home/pi/bin/simpleServer.py")
-os.system("sudo cp /home/pi/installfiles/bin/simpleServer.py /home/pi/bin/simpleServer.py")
+if os.path.exists(f"{BIN_DIR}/simpleServer.py"):
+    os.system(f"sudo cp {BIN_DIR}/simpleServer.py {BIN_DIR}/simpleServer.py.OLD")
+    os.remove(f"{BIN_DIR}/simpleServer.py")
+os.system(f"sudo cp {INSTALLFILES_DIR}/bin/simpleServer.py {BIN_DIR}/simpleServer.py")
 
-#Copy new support file display_image_rotated.sh 
-print("***** Copy new simpleServer.py file *****")
-if os.path.exists("/home/pi/bin/display_image_rotated.sh"):
-    os.system("sudo cp /home/pi/bin/display_image_rotated.sh /home/pi/bin/display_image_rotated.sh.OLD")
-    os.remove("/home/pi/bin/display_image_rotated.sh")
-os.system("sudo cp /home/pi/installfiles/bin/display_image_rotated.sh /home/pi/bin/display_image_rotated.sh")
-os.system("sudo chmod +x /home/pi/bin/display_image_rotated.sh")
 
 #Copy control-map files
 print("***** Copy Control Map files *****")
 defaultimganswer=query_yes_no("Do you wish to replace existing control map files? (Select n if you created custom images)")
 if defaultimganswer == True:
-    if os.path.exists("/home/pi/control_maps"):
-        os.system("sudo mv /home/pi/control_maps /home/pi/control_maps.OLD")
-  
-    #Why were we making this earlier if only to rename it and not set permissions? 
-    if not os.path.exists("/home/pi/control_maps"):
-        os.makedirs("/home/pi/control_maps")
-        os.makedirs("/home/pi/control_maps/arcade")
-        os.system("sudo chown -R pi:pi /home/pi/control_maps/")
-        os.system("sudo chmod -R 755 /home/pi/control_maps")
-        
-           
-        
-os.system("sudo cp -R /home/pi/installfiles/control_maps /home/pi/")
-os.system("sudo chmod +x /home/pi/control_maps/button_map.sh")
+    if os.path.exists(CONTROL_MAPS_DIR):
+        os.system(f"sudo mv {CONTROL_MAPS_DIR} {CONTROL_MAPS_DIR}.OLD")
+
+    #Why were we making this earlier if only to rename it and not set permissions?
+    if not os.path.exists(CONTROL_MAPS_DIR):
+        os.makedirs(CONTROL_MAPS_DIR)
+        os.makedirs(f"{CONTROL_MAPS_DIR}/arcade")
+        os.system(f"sudo chown -R {username}:{username} {CONTROL_MAPS_DIR}/")
+        os.system(f"sudo chmod -R 755 {CONTROL_MAPS_DIR}")
+
+
+
+os.system(f"sudo cp -R {INSTALLFILES_DIR}/control_maps {HOME_DIR}/")
+os.system(f"sudo chmod +x {CONTROL_MAPS_DIR}/button_map.sh")
 
 
 #Ask if new default.png file should be created and if so, copy new file.
 print("***** Copy new default.png file *****")
-defaultimganswer=query_yes_no("Do you wish to replace default.png file? (Select n if you created custom image)")
+defaultimganswer=query_yes_no("Do you wish to replace default.png file? This is a default still image that can be used. (Select n if you created custom image)")
 if defaultimganswer == True:
-    if os.path.exists("/home/pi/marquees/default.png"):    
-        os.system("sudo cp /home/pi/marquees/default.png /home/pi/marquees/default.png.OLD")
-        os.remove("/home/pi/marquees/default.png")
-    os.system("sudo cp /home/pi/installfiles/marquees/default.png /home/pi/marquees/default.png")
-    
-    #Ask if new default.png file should be created and if so, copy new file.
+    if os.path.exists(f"{MARQUEES_DIR}/default.png"):
+        os.system(f"sudo cp {MARQUEES_DIR}/default.png {MARQUEES_DIR}/default.png.OLD")
+        os.remove(f"{MARQUEES_DIR}/default.png")
+    os.system(f"sudo cp {INSTALLFILES_DIR}/marquees/default.png {MARQUEES_DIR}/default.png")
+
+#Ask if new default.mp4 file should be created and if so, copy new file.
 print("***** Copy new default.mp4 file *****")
-defaultimganswer=query_yes_no("Do you wish to replace default.mp4 file? (Select n if you created custom image)")
+defaultimganswer=query_yes_no("Do you wish to replace default.mp4 file? This is a default video that can be used.  (Select n if you created custom video)")
 if defaultimganswer == True:
-    if os.path.exists("/home/pi/marquees/default.mp4"):    
-        os.system("sudo cp /home/pi/marquees/default.mp4 /home/pi/marquees/default.mp4.OLD")
-        os.remove("/home/pi/marquees/default.mp4")
-    os.system("sudo cp /home/pi/installfiles/marquees/default.mp4 /home/pi/marquees/default.mp4")
+    if os.path.exists(f"{MARQUEES_DIR}/default.mp4"):
+        os.system(f"sudo cp {MARQUEES_DIR}/default.mp4 {MARQUEES_DIR}/default.mp4.OLD")
+        os.remove(f"{MARQUEES_DIR}/default.mp4")
+    os.system(f"sudo cp {INSTALLFILES_DIR}/marquees/default.mp4 {MARQUEES_DIR}/default.mp4")
+    
+#Ask if new default_marquee.mp4 file should be created and if so, copy new file.
+print("***** Copy new default_marquee.mp4 file *****")
+defaultimganswer=query_yes_no("Do you wish to replace default_marquee.mp4 file? This is the default video shown on the marquee screen. (Select n if you created custom video)")
+if defaultimganswer == True:
+    if os.path.exists(f"{MARQUEES_DIR}/default_marquee.mp4"):
+        os.system(f"sudo cp {MARQUEES_DIR}/default_marquee.mp4 {MARQUEES_DIR}/default_marquee.mp4.OLD")
+        os.remove(f"{MARQUEES_DIR}/default_marquee.mp4")
+    os.system(f"sudo cp {INSTALLFILES_DIR}/marquees/default_marquee.mp4 {MARQUEES_DIR}/default_marquee.mp4")
+    
+#Ask if new default_control.mp4 file should be created and if so, copy new file.
+print("***** Copy new default_control.mp4 file *****")
+defaultimganswer=query_yes_no("Do you wish to replace default_control.mp4 file? This is the default video shown on the control map screen. (Select n if you created custom video)")
+if defaultimganswer == True:
+    if os.path.exists(f"{MARQUEES_DIR}/default_control.mp4"):
+        os.system(f"sudo cp {MARQUEES_DIR}/default_control.mp4 {MARQUEES_DIR}/default_control.mp4.OLD")
+        os.remove(f"{MARQUEES_DIR}/default_control.mp4")
+    os.system(f"sudo cp {INSTALLFILES_DIR}/marquees/default_control.mp4 {MARQUEES_DIR}/default_control.mp4")    
 
+#Ask if new default_rotated.mp4 file should be created and if so, copy new file.
+print("***** Copy new default_rotated.mp4 file *****")
+defaultimganswer=query_yes_no("Do you wish to replace default_rotated.mp4 file? This is the default video shown on the control map screen rotated to display correctly on some screens. (Select n if you created custom video)")
+if defaultimganswer == True:
+    if os.path.exists(f"{MARQUEES_DIR}/default_rotated.mp4"):
+        os.system(f"sudo cp {MARQUEES_DIR}/default_rotated.mp4 {MARQUEES_DIR}/default_rotated.mp4.OLD")
+        os.remove(f"{MARQUEES_DIR}/default_rotated.mp4")
+    os.system(f"sudo cp {INSTALLFILES_DIR}/marquees/default_rotated.mp4 {MARQUEES_DIR}/default_rotated.mp4")  
 
-# Install splashscreen image
-print("***** Copy new splashscreen.png file *****")
-if os.path.exists("/home/pi/marquees/splashscreen.png"):
-    os.system("sudo cp /home/pi/marquees/splashscreen.png /home/pi/marquees/splashscreen.png.OLD")
-    os.remove("/home/pi/marquees/splashscreen.png")    
-os.system("sudo cp /home/pi/installfiles/marquees/splashscreen.png /home/pi/marquees/splashscreen.png")
-
-# Create folders for systems used to hold marquee image files
-print("***** Create marquee system folders for images *****")
-if not os.path.exists("/home/pi/marquees"):
-    os.makedirs("/home/pi/marquees")
-    os.system("sudo chmod 777 /home/pi/marquees")
-if not os.path.exists("/home/pi/marquees/3do"):
-    os.makedirs("/home/pi/marquees/3do")
-    os.system("sudo chmod 777 /home/pi/marquees/3do")
-if not os.path.exists("/home/pi/marquees/amiga"):
-    os.makedirs("/home/pi/marquees/amiga")
-    os.system("sudo chmod 777 /home/pi/marquees/amiga")
-if not os.path.exists("/home/pi/marquees/amstradcpc"):
-    os.makedirs("/home/pi/marquees/amstradcpc")
-    os.system("sudo chmod 777 /home/pi/marquees/amstradcpc")
-if not os.path.exists("/home/pi/marquees/apple2"):
-    os.makedirs("/home/pi/marquees/apple2")
-    os.system("sudo chmod 777 /home/pi/marquees/apple2")
-if not os.path.exists("/home/pi/marquees/arcade"):
-    os.makedirs("/home/pi/marquees/arcade")
-    os.system("sudo chmod 777 /home/pi/marquees/arcade")
-if not os.path.exists("/home/pi/marquees/atari800"):
-    os.makedirs("/home/pi/marquees/atari800")
-    os.system("sudo chmod 777 /home/pi/marquees/atari800")
-if not os.path.exists("/home/pi/marquees/atari2600"):
-    os.makedirs("/home/pi/marquees/atari2600")
-    os.system("sudo chmod 777 /home/pi/marquees/atari2600")
-if not os.path.exists("/home/pi/marquees/atari5200"):
-    os.makedirs("/home/pi/marquees/atari5200")
-    os.system("sudo chmod 777 /home/pi/marquees/atari5200")
-if not os.path.exists("/home/pi/marquees/atari7800"):
-    os.makedirs("/home/pi/marquees/atari7800")
-    os.system("sudo chmod 777 /home/pi/marquees/atari7800")
-if not os.path.exists("/home/pi/marquees/atarijaquar"):
-    os.makedirs("/home/pi/marquees/atarijaquar")
-    os.system("sudo chmod 777 /home/pi/marquees/atarijaquar")
-if not os.path.exists("/home/pi/marquees/atarilynx"):
-    os.makedirs("/home/pi/marquees/atarilynx")
-    os.system("sudo chmod 777 /home/pi/marquees/atarilynx")
-if not os.path.exists("/home/pi/marquees/atarist"):
-    os.makedirs("/home/pi/marquees/atarist")
-    os.system("sudo chmod 777 /home/pi/marquees/atarist")
-if not os.path.exists("/home/pi/marquees/c64"):
-    os.makedirs("/home/pi/marquees/c64")
-    os.system("sudo chmod 777 /home/pi/marquees/c64")
-if not os.path.exists("/home/pi/marquees/COCO"):
-    os.makedirs("/home/pi/marquees/COCO")
-    os.system("sudo chmod 777 /home/pi/marquees/COCO")
-if not os.path.exists("/home/pi/marquees/coleco"):
-    os.makedirs("/home/pi/marquees/coleco")
-    os.system("sudo chmod 777 /home/pi/marquees/coleco")
-if not os.path.exists("/home/pi/marquees/daphne"):
-    os.makedirs("/home/pi/marquees/daphne")
-    os.system("sudo chmod 777 /home/pi/marquees/daphne")
-if not os.path.exists("/home/pi/marquees/dragon32"):
-    os.makedirs("/home/pi/marquees/dragon32")
-    os.system("sudo chmod 777 /home/pi/marquees/dragon32")
-if not os.path.exists("/home/pi/marquees/dreamcast"):
-    os.makedirs("/home/pi/marquees/dreamcast")
-    os.system("sudo chmod 777 /home/pi/marquees/dreamcast")
-if not os.path.exists("/home/pi/marquees/fba"):
-    os.makedirs("/home/pi/marquees/fba")
-    os.system("sudo chmod 777 /home/pi/marquees/fba")
-if not os.path.exists("/home/pi/marquees/fds"):
-    os.makedirs("/home/pi/marquees/fds")
-    os.system("sudo chmod 777 /home/pi/marquees/fds")
-if not os.path.exists("/home/pi/marquees/gameandwatch"):
-    os.makedirs("/home/pi/marquees/gameandwatch")
-    os.system("sudo chmod 777 /home/pi/marquees/gameandwatch")
-if not os.path.exists("/home/pi/marquees/gamegear"):
-    os.makedirs("/home/pi/marquees/gamegear")
-    os.system("sudo chmod 777 /home/pi/marquees/gamegear")
-if not os.path.exists("/home/pi/marquees/gb"):
-    os.makedirs("/home/pi/marquees/gb")
-    os.system("sudo chmod 777 /home/pi/marquees/gb")
-if not os.path.exists("/home/pi/marquees/gba"):
-    os.makedirs("/home/pi/marquees/gba")
-    os.system("sudo chmod 777 /home/pi/marquees/gba")
-if not os.path.exists("/home/pi/marquees/gbc"):
-    os.makedirs("/home/pi/marquees/gbc")
-    os.system("sudo chmod 777 /home/pi/marquees/gbc")
-if not os.path.exists("/home/pi/marquees/gc"):
-    os.makedirs("/home/pi/marquees/gc")
-    os.system("sudo chmod 777 /home/pi/marquees/gc")
-if not os.path.exists("/home/pi/marquees/intellivision"):
-    os.makedirs("/home/pi/marquees/intellivision")
-    os.system("sudo chmod 777 /home/pi/marquees/intellivision")
-if not os.path.exists("/home/pi/marquees/macintosh"):
-    os.makedirs("/home/pi/marquees/macintosh")
-    os.system("sudo chmod 777 /home/pi/marquees/macintosh")
-if not os.path.exists("/home/pi/marquees/mame"):
-    os.makedirs("/home/pi/marquees/mame")
-    os.system("sudo chmod 777 /home/pi/marquees/mame")    
-if not os.path.exists("/home/pi/marquees/mame-advmame"):
-    os.makedirs("/home/pi/marquees/mame-advmame")
-    os.system("sudo chmod 777 /home/pi/marquees/mame-advmame")
-if not os.path.exists("/home/pi/marquees/mame-libretro"):
-    os.makedirs("/home/pi/marquees/mame-libretro")
-    os.system("sudo chmod 777 /home/pi/marquees/mame-libretro")
-if not os.path.exists("/home/pi/marquees/mame-mame4all"):
-    os.makedirs("/home/pi/marquees/mame-mame4all")
-    os.system("sudo chmod 777 /home/pi/marquees/mame-mame4all")
-if not os.path.exists("/home/pi/marquees/mastersystem"):
-    os.makedirs("/home/pi/marquees/mastersystem")
-    os.system("sudo chmod 777 /home/pi/marquees/mastersystem")
-if not os.path.exists("/home/pi/marquees/megadrive"):
-    os.makedirs("/home/pi/marquees/megadrive")
-    os.system("sudo chmod 777 /boot/cmdline.txt")
-if not os.path.exists("/home/pi/marquees/msx"):
-    os.makedirs("/home/pi/marquees/msx")
-    os.system("sudo chmod 777 /home/pi/marquees/msx")
-if not os.path.exists("/home/pi/marquees/n64"):
-    os.makedirs("/home/pi/marquees/n64")
-    os.system("sudo chmod 777 /home/pi/marquees/n64")
-if not os.path.exists("/home/pi/marquees/nds"):
-    os.makedirs("/home/pi/marquees/nds")
-    os.system("sudo chmod 777 /home/pi/marquees/nds")
-if not os.path.exists("/home/pi/marquees/neogeo"):
-    os.makedirs("/home/pi/marquees/neogeo")
-    os.system("sudo chmod 777 /home/pi/marquees/neogeo")
-if not os.path.exists("/home/pi/marquees/nes"):
-    os.makedirs("/home/pi/marquees/nes")
-    os.system("sudo chmod 777 /home/pi/marquees/nes")
-if not os.path.exists("/home/pi/marquees/ngp"):
-    os.makedirs("/home/pi/marquees/ngp")
-    os.system("sudo chmod 777 /home/pi/marquees/ngp")
-if not os.path.exists("/home/pi/marquees/ngpc"):
-    os.makedirs("/home/pi/marquees/ngpc")
-    os.system("sudo chmod 777 /home/pi/marquees/ngpc")
-if not os.path.exists("/home/pi/marquees/oric"):
-    os.makedirs("/home/pi/marquees/oric")
-    os.system("sudo chmod 777 /home/pi/marquees/oric")
-if not os.path.exists("/home/pi/marquees/pc"):
-    os.makedirs("/home/pi/marquees/pc")
-    os.system("sudo chmod 777 /home/pi/marquees/pc")
-if not os.path.exists("/home/pi/marquees/pcengine"):
-    os.makedirs("/home/pi/marquees/pcengine")
-    os.system("sudo chmod 777 /home/pi/marquees/pcengine")
-if not os.path.exists("/home/pi/marquees/ps2"):
-    os.makedirs("/home/pi/marquees/ps2")
-    os.system("sudo chmod 777 /home/pi/marquees/ps2")
-if not os.path.exists("/home/pi/marquees/psp"):
-    os.makedirs("/home/pi/marquees/psp")
-    os.system("sudo chmod 777 /home/pi/marquees/psp")
-if not os.path.exists("/home/pi/marquees/psx"):
-    os.makedirs("/home/pi/marquees/psx")
-    os.system("sudo chmod 777 /home/pi/marquees/psx")
-if not os.path.exists("/home/pi/marquees/samcoupe"):
-    os.makedirs("/home/pi/marquees/samcoupe")
-    os.system("sudo chmod 777 /home/pi/marquees/samcoupe")
-if not os.path.exists("/home/pi/marquees/saturn"):
-    os.makedirs("/home/pi/marquees/saturn")
-    os.system("sudo chmod 777 /home/pi/marquees/saturn")
-if not os.path.exists("/home/pi/marquees/scummvm"):
-    os.makedirs("/home/pi/marquees/scummvm")
-    os.system("sudo chmod 777 /home/pi/marquees/scummvm")
-if not os.path.exists("/home/pi/marquees/sega32x"):
-    os.makedirs("/home/pi/marquees/sega32x")
-    os.system("sudo chmod 777 /home/pi/marquees/sega32x")
-if not os.path.exists("/home/pi/marquees/segacd"):
-    os.makedirs("/home/pi/marquees/segacd")
-    os.system("sudo chmod 777 /home/pi/marquees/segacd")
-if not os.path.exists("/home/pi/marquees/sg-1000"):
-    os.makedirs("/home/pi/marquees/sg-1000")
-    os.system("sudo chmod 777 /home/pi/marquees/sg-1000")
-if not os.path.exists("/home/pi/marquees/snes"):
-    os.makedirs("/home/pi/marquees/snes")
-    os.system("sudo chmod 777 /home/pi/marquees/snes")
-if not os.path.exists("/home/pi/marquees/ti99"):
-    os.makedirs("/home/pi/marquees/ti99")
-    os.system("sudo chmod 777 /home/pi/marquees/ti99")
-if not os.path.exists("/home/pi/marquees/trs-80"):
-    os.makedirs("/home/pi/marquees/trs-80")
-    os.system("sudo chmod 777 /home/pi/marquees/trs-80")
-if not os.path.exists("/home/pi/marquees/vectrex"):
-    os.makedirs("/home/pi/marquees/vectrex")
-    os.system("sudo chmod 777 /home/pi/marquees/vectrex")
-if not os.path.exists("/home/pi/marquees/videopac"):
-    os.makedirs("/home/pi/marquees/videopac")
-    os.system("sudo chmod 777 /home/pi/marquees/videopac")
-if not os.path.exists("/home/pi/marquees/virtualboy"):
-    os.makedirs("/home/pi/marquees/virtualboy")
-    os.system("sudo chmod 777 /home/pi/marquees/virtualboy")
-if not os.path.exists("/home/pi/marquees/wii"):
-    os.makedirs("/home/pi/marquees/wii")
-    os.system("sudo chmod 777 /home/pi/marquees/wii")
-if not os.path.exists("/home/pi/marquees/wonderswancolor"):
-    os.makedirs("/home/pi/marquees/wonderswancolor")
-    os.system("sudo chmod 777 /home/pi/marquees/wonderswancolor")
-if not os.path.exists("/home/pi/marquees/zmachine"):
-    os.makedirs("/home/pi/marquees/zmachine")
-    os.system("sudo chmod 777 /home/pi/marquees/zmachine")
-if not os.path.exists("/home/pi/marquees/zxspectrum"):
-    os.makedirs("/home/pi/marquees/zxspectrum")
-    os.system("sudo chmod 777 /home/pi/marquees/zxspectrum")
+#Ask if new screensaver_control.mp4 file should be created and if so, copy new file.
+print("***** Copy new screensaver_control.mp4 file *****")
+defaultimganswer=query_yes_no("Do you wish to replace screensaver_control.mp4 file? This is the default screensaver video shown on the control map screen. (Select n if you created custom video)")
+if defaultimganswer == True:
+    if os.path.exists(f"{MARQUEES_DIR}/screensaver_control.mp4"):
+        os.system(f"sudo cp {MARQUEES_DIR}/screensaver_control.mp4 {MARQUEES_DIR}/screensaver_control.mp4.OLD")
+        os.remove(f"{MARQUEES_DIR}/screensaver_control.mp4")
+    os.system(f"sudo cp {INSTALLFILES_DIR}/marquees/screensaver_control.mp4 {MARQUEES_DIR}/screensaver_control.mp4")   
+    
+#Ask if new screensaver_marquee.mp4 file should be created and if so, copy new file.
+print("***** Copy new screensaver_marquee.mp4 file *****")
+defaultimganswer=query_yes_no("Do you wish to replace screensaver_marquee.mp4 file? This is the default screensaver video shown on the marquee. (Select n if you created custom video)")
+if defaultimganswer == True:
+    if os.path.exists(f"{MARQUEES_DIR}/screensaver_marquee.mp4"):
+        os.system(f"sudo cp {MARQUEES_DIR}/screensaver_marquee.mp4 {MARQUEES_DIR}/screensaver_marquee.mp4.OLD")
+        os.remove(f"{MARQUEES_DIR}/screensaver_marquee.mp4")
+    os.system(f"sudo cp {INSTALLFILES_DIR}/marquees/screensaver_marquee.mp4 {MARQUEES_DIR}/screensaver_marquee.mp4")   
+        
+print("***** Copy blank.png placeholder file *****")    
+os.system(f"sudo cp {INSTALLFILES_DIR}/marquees/blank.png {MARQUEES_DIR}/blank.png")  
 
 #Install updates
 print("***** Running update... *****")
 os.system("sudo apt-get update --fix-missing")
 #os.system("sudo apt-get upgrade -y")
 
-#Install omxplayer
+#Install mpv
 print("***** Installing MPV... *****")
 os.system("sudo apt-get -y install mpv")
 
@@ -339,7 +273,7 @@ print("***** Running update... *****")
 os.system("sudo apt-get update --fix-missing")
 #os.system("sudo apt-get upgrade -y")
 
-#Install omxplayer
+#Install imagemagick
 print("***** Installing Imagemagick... *****")
 os.system("sudo apt-get -y install imagemagick")
 
@@ -350,38 +284,22 @@ time.sleep(10)
 #Run update again
 print("***** Running update... *****")
 os.system("sudo apt-get update --fix-missing")
- 
+
 #Install FIM
-print("***** Installing FIM... *****")
-os.system("sudo apt-get -y install fim")
+#print("***** Installing FIM... *****")
+#os.system("sudo apt-get -y install fim")
 
-#Copy services to appropriate places
+#Copy services to appropriate places, filling in this user's info as we go
 print("***** Installing LCD Marquee Services... *****")
-os.system("sudo cp /home/pi/installfiles/bin/services/SplashScreen.service /etc/systemd/system/SplashScreen.service")
-os.system("sudo cp /home/pi/installfiles/bin/services/HideConsole.service /etc/systemd/system/HideConsole.service")
-os.system("sudo cp /home/pi/installfiles/bin/services/MarqueeImage.service /lib/systemd/system/MarqueeImage.service")
-os.system("sudo cp /home/pi/installfiles/bin/services/MarqueeVideo.service /lib/systemd/system/MarqueeVideo.service")
-os.system("sudo cp /home/pi/installfiles/bin/services/simpleServer.service /lib/systemd/system/simpleServer.service")
-
-#Set permissions on services so they will execute
-print("***** Setting permissions on LCD Marquee Services... *****")
-os.system("sudo chmod 644 /etc/systemd/system/SplashScreen.service")
-os.system("sudo chmod 644 /etc/systemd/system/HideConsole.service")
-os.system("sudo chmod 644 /lib/systemd/system/MarqueeImage.service")
-os.system("sudo chmod 644 /lib/systemd/system/MarqueeVideo.service")
-os.system("sudo chmod 644 /lib/systemd/system/simpleServer.service")
+install_service(INSTALLFILES_DIR, "MarqueeBitLCD.service", "/etc/systemd/system", SERVICE_REPLACEMENTS)
+install_service(INSTALLFILES_DIR, "MarqueeBitLCDImage.service", "/etc/systemd/system", SERVICE_REPLACEMENTS)
+install_service(INSTALLFILES_DIR, "MarqueeImage.service", "/lib/systemd/system", SERVICE_REPLACEMENTS)
+install_service(INSTALLFILES_DIR, "MarqueeVideo.service", "/lib/systemd/system", SERVICE_REPLACEMENTS)
+install_service(INSTALLFILES_DIR, "simpleServer.service", "/lib/systemd/system", SERVICE_REPLACEMENTS)
 
 #Reload Services
 print("***** Reloading Services... *****")
 os.system("sudo systemctl daemon-reload")
-
-#Enable the SplashScreen service to start automatically on bootup.
-print("***** Set SplashScreen service to run on bootup... *****")
-os.system("sudo systemctl enable SplashScreen.service")
-
-#Enable the Hide Consoler service to start automatically on bootup.
-print("***** Set SplashScreen service to run on bootup... *****")
-os.system("sudo systemctl enable HideConsole.service")
 
 print("***** Set SimpleServer service to run on bootup... *****")
 os.system("sudo systemctl enable simpleServer.service")
@@ -397,19 +315,21 @@ print("Will now edit the config.txt file. File will be updated with line")
 print("disable_splash=1 to disable rainbow splash screen at boot up.")
 configanswer=query_yes_no("Do you wish to update config.txt? Requires sudo. (Select n if you already updated file)")
 if configanswer == True:
-    cmdpath = "/boot/firmware/config.txt"
-    if not os.path.exists(cmdpath):
-        cmdpath = "/boot/config.txt"
-        
-    os.system("sudo chmod 755 /boot/firmware/config.txt")
-    with open("/boot/firmware/config.txt", "a") as myfile:
-        myfile.write("disable_splash=1\n")
-    myfile.close()
-    print("config.txt has been updated")
+    configpath = "/boot/firmware/config.txt"
+    if not os.path.exists(configpath):
+        configpath = "/boot/config.txt"
+
+    if os.path.exists(configpath):
+        os.system(f"sudo chmod 755 {configpath}")
+        with open(configpath, "a") as myfile:
+            myfile.write("disable_splash=1\n")
+        print(f"{configpath} has been updated")
+    else:
+        print("ERROR: Could not find config.txt at /boot/firmware/ or /boot/")
 else:
     print("config.txt will not be updated")
+
 #Copy new cmdline.txt file and set permissions on new cmdline.txt file
-#This might not be working!
 print("***** Update cmdline.txt file... *****")
 print("Will now edit the cmdline.txt file to disable all text on bootup.")
 cmdlineanswer=query_yes_no("Do you wish to update cmdline.txt? Requires sudo. (Select n if you already updated file)")
@@ -444,7 +364,7 @@ if cmdlineanswer == True:
         try:
             with open(cmdpath, "w") as newcmdlinefile:
                 newcmdlinefile.write(new_cmdline + "\n")
-            
+
             # Set permissions
             os.chmod(cmdpath, 0o755)
             print(f"Successfully updated {cmdpath}")
@@ -452,7 +372,7 @@ if cmdlineanswer == True:
         except PermissionError:
             print("ERROR: Permission denied. Please run this script with 'sudo'.")
     else:
-        print(f"ERROR: Could not find cmdline.txt at /boot/firmware/ or /boot/")
+        print("ERROR: Could not find cmdline.txt at /boot/firmware/ or /boot/")
 else:
     print("cmdline.txt will not be updated")
 
@@ -460,4 +380,3 @@ else:
 rebootanswer=query_yes_no("Reboot is required. Do you wish to reboot now?")
 if rebootanswer == True:
     os.system("sudo reboot")
-

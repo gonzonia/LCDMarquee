@@ -1,44 +1,79 @@
 # LCDMarquee
+**Disclosure: AI was used in creating/modifying this project.**
+
 Updated version of Passable Gamer's LCD Marquee Controller merged with Control Map generation of Texacate's Visual Retrpopie Control Maps. 
 
-The entire project was inspired by [Way of the Wrench's video](https://youtu.be/Au9O-A2fz74?si=XJT3YeEFvu_R_Vjr). If you run into problems, watch this in case I missed a step in my instructions. My goal was to streamline the server side, but there may be something I missed for the client side. 
+The entire project was inspired by [Way of the Wrench's video](https://youtu.be/Au9O-A2fz74?si=XJT3YeEFvu_R_Vjr).  
 
 His version is [here on YouTube](https://youtu.be/wy0asRc0yLA?si=WObEnVR3QmIBuntf).
 
 His version is actually an updated/modified version of [Texacate's Visual-RetroPie-Control-Maps](https://github.com/Texacate/Visual-RetroPie-Control-Maps)
 
-You will need Texacate's client (`simpleClient.py`) to call the server. **Be sure to update the IP address in that file with the IP address of your marquee Pi.** 
+This is based on those projects but has been modified heavily. 
+
+I've done my best to make the install easy and well documented, but there are a lot of assumptions being made, as this was really a custom project for **MY** setup. 
+
+My setup (as I write this). 
+
+[Atgames Legends Ultimate HD (HAB802D)](https://www.atgames.us/products/legends-ultimate-ce-hd) (the current version as CE, I have an older version)
+Date Code: 05/2022
+Manufacturer: Dichrole Cat
+
+Running: [R-CADE](https://github.com/retro-center/rcade_releases) version 2.08 off of a [Transcend ESD310 256GB External SSD](https://a.co/d/07lLbTI6). 
+
+[Raspberry Pi 4 Model B Rev 1.5 1GB](https://a.co/d/04jLVVZd)
+-- [AtGames Legends BitLCD HD](https://www.atgames.us/products/legends-bitlcd) - Marquee Screen 
+-- [Waveshare 4 inch HDMI LCD IPS Display 800x480 Resolution Resistive Touch Screen](https://a.co/d/08mbi0Ak) - Control Map Screen
+
+## 📌 Features
+Marquee Display (BitLCD)
+
+* Shows game-specific marquee images when a game is selected
+* Shows system-level marquees when browsing system menus
+* Falls back to the default marquee video on startup and when returning to the menu
+* Supports multiple image formats: .png, .jpg, .jpeg, .gif
+* Supports multiple video formats: .mp4, .avi, .mkv
+* Theme support via theme.txt - directory-based theme selection
+* Images displayed at native resolution (1920x360) without scaling
+
+Control Map Display (Waveshare)
+
+* Shows base navigation control map when browsing menus
+* Shows game-specific control maps when a game is launched
+* Auto-generates control maps from CSV button mapping data using button_map.sh
+* Control maps cached after the first generation for instant display on subsequent launches
+* Falls back to the marquee image if control map generation fails
+* Staggered 6-button layout matching physical arcade panel (X/Y/Z top row, A/B/C bottom row)
+* Button colors indicate active (green) vs inactive (black) buttons
 
 
-To install- (this assumes you are using a user of Pi and the scripts are assuming that as well, if not, you'll need to alter everything)
-1) Image a Pi with a Lite version of PiOS (Trixie was used when I did this.)
-2) SSH and run updates on pi (`sudo apt update  -y && sudo apt full-upgrade  -y && sudo apt autoremove -y`)
+To install-
+
+1) Image a Pi with a current version of PiOS with Desktop (Trixie was used when I did this.)
+2) SSH and run updates on pi (I like to use - `sudo apt update  -y && sudo apt full-upgrade  -y && sudo apt autoremove -y`)
 4) Change to Auto-login at boot (in raspi-config)
 5) Upload the installfiles directory
-6) Run the installscript
-   ```sudo python3 /home/pi/installfiles/bin/lcdmarqueesetup.py```
+6) Run the install script
+   ```sudo python3 /home/<USERNAME>/installfiles/bin/lcdmarqueesetup.py```
 
    This will walk through the installation of the necessary services and packages.
 
-7) Copy over any marquees into the appropriate system folder (for RCADE the arcade collection all go into MAME).
+7) Copy over any marquees into the appropriate system folder (for R-CADE, place all of the arcade collection marquees into MAME).
 
-***Changes***  
-
-
-**It now uses MPV to play video.** It also allows for rotating the screen if necessary. 
-
-You can change the rotation in `display_image_rotated.sh` if you don't need it rotated (It's currently set to 270). 
-
-To change the video rotation, edit in the service:
+I needed to pre-rotate the videos that are displayed on the Control Map Screen. If you need to change the rotation of the images, you can do that here- 
 ```
-sudo systemctl edit --full MarqueeVideo
+sudo systemctl edit --full MarqueeImage 
 ```
+  
+8) On the ALU or R-CADE machine- copy the userscripts folder into rcade/share/userscripts. This can be done over ftp or through the network share. 
 
-I've also added the ability to send a "SHUTDOWN" command and changed the Marquee to use the "SELECTED" command. "OPEN" will trigger the control map generation. If you only want the marquee, be sure to use "SELECTED" when calling the server. 
+9) Reboot both systems.  
 
-I'm using this on an RCADE system running on an AtGames Legends Ultimate cabinet, not retropie. As a result, there are some additional scripts I've created that can be triggered at events like shutting down. This way the pi shuts down gracefully when the RCADE is shutdown. I have it showing a marquee when selecting a game, and then when the game is open it shows the control map. 
 
-To accomplish this and have the control maps match, I had to change the layout in the button map script as well.   
+Because I'm using this on an R-CADE system running on an AtGames Legends Ultimate cabinet, not Retropie,  there are some additional scripts I've created that can be triggered at events like shutting down. This way the pi shuts down gracefully when the R-CADE system is shut down or rebooted. 
+
+To have the control maps match the ALU, I had to change the layout from the original script.
+
 ORGINAL:  
 Y(1) X(2) L(3)  
 B(4) A(5) R(6)  
@@ -47,11 +82,12 @@ ALU:
 X(4) Y(5) Z(6)  
 A(1) B(2) C(3)  
 
-This is only set to work with mame and arcade games at the moment and they might not all be there. Feel free to let me know if something isn't working or is mising. 
+This is only set to work with MAME and arcade games at the moment, and there's a high likelihood that not all games are there. Feel free to let me know if something isn't working or is missing. 
 
-I tried running on a Pi Zero W and it couldn't handle video, was also slow to start up, switch screens, and generate control maps.
+Additionally, I've included files I used for a custom boot splash screen using Plymouth. 
+With the two screens, the geometry wasn't what would be expected. The smaller screen is inside the geometry of the BitLCD (which is technically 1080p but only the top third is visible). 
+For this to work on both screens, I had to add some additional items to my `/boot/firmware/cmdline.txt` and `/boot/firmware/config.txt`. I've included the addtitions in a `cmdline.txt` file and my entire `config.txt` in case you're having trouble getting things to work. 
 
-I switched to a Pi 5 8GB. 
-
+[Instructions for Setting up Splashscreens](SPLASHSCREEN.md)
 ***Permission was obtained to include R-CADE images in this project. R-Cade and all associated R-Cade content is legal property of Retro-Center and goverened by the R-Cade license agreement. Unauthorized distribution, duplication, or usage is prohibited.<BR>
-See the LICENSE.md file at the top-level directory of the Retro-Center github releases at https://github.com/retro-center/rcade_releases/blob/master/LICENSE.md***
+See the LICENSE.md file at the top-level directory of the Retro-Center GitHub releases at https://github.com/retro-center/rcade_releases/blob/master/LICENSE.md***

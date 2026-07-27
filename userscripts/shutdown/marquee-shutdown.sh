@@ -2,14 +2,22 @@
 #!/bin/bash
 
 # DEBUG: Log all arguments to a file
+#Set to true to persist log file 
+DEBUG=false
+
+
 LOGFILE="/rcade/share/userscripts/shutdown/marquee-shutdown-debug.log"
-rm -f "$LOGFILE"
+if [ "$DEBUG" != "true" ]; then
+  rm -f "$LOGFILE"
+fi
 touch &LOGFILE
+
 echo "Initiating arcade shutdown sequence..." >> $LOGFILE
 
 # Send shutdown command to marquee display
 echo "Sending shutdown to marquee display..." >> $LOGFILE
-python3 /rcade/share/userscripts/simpleClient.py "SHUTDOWN"
+
+echo "SHUTDOWN" > /tmp/marquee-daemon.pipe
 
 
 echo "Shutdown sequence complete">> $LOGFILE

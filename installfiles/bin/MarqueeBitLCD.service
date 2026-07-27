@@ -4,13 +4,13 @@ After=graphical.target
 
 [Service]
 Type=simple
-User=pi
-Group=pi
+User=__USER__
+Group=__GROUP__
 Environment="WAYLAND_DISPLAY=wayland-0"
-Environment="XDG_RUNTIME_DIR=/run/user/1000"
-Environment="Marquee=/home/pi/marquees/default_marquee.mp4"
-EnvironmentFile=-/home/pi/bin/marqueearg.txt
-ExecStartPre=/bin/bash -c 'for i in $(seq 1 60); do [ -S /run/user/1000/wayland-0 ] && exit 0; sleep 2; done; exit 1'
+Environment="XDG_RUNTIME_DIR=/run/user/__UID__"
+Environment="Marquee=__HOME__/marquees/default_marquee.mp4"
+EnvironmentFile=-__HOME__/bin/marqueearg.txt
+ExecStartPre=/bin/bash -c 'for i in $(seq 1 60); do [ -S /run/user/__UID__/wayland-0 ] && exit 0; sleep 2; done; exit 1'
 ExecStart=/usr/bin/mpv --no-audio --loop-file=inf  --no-input-cursor --no-input-default-bindings --idle --title="bitlcd-marquee" --video-align-y=-1 --video-unscaled=yes --image-display-duration=inf --input-ipc-server=/tmp/mpv-bitlcd.sock "${Marquee}"
 Restart=no
 #ExecStop=-pkill -f "mpv.*bitlcd"

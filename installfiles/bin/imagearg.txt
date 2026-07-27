@@ -1,1 +1,0 @@
-Image=/home/pi/control_maps/base_control_map.png

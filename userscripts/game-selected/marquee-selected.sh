@@ -5,6 +5,7 @@
 #Argument 2 = the file name of the game being started without the path and without the extension
 #Argument 3 = the full path to the game being started
 
+#Set to true to persist log file 
 DEBUG=false
 
 LOGFILE="/rcade/share/userscripts/game-selected/marquee-selected-debug.log"
@@ -45,6 +46,6 @@ echo "Processed game: $game" >> $LOGFILE
 echo "Sending command: OPEN $system $game" >> $LOGFILE
 
 # Send game info to picture server
-python3 /rcade/share/userscripts/simpleClient.py "SELECTED $system $game" >> $LOGFILE 2>&1
+echo "SELECTED $system $game" > /tmp/marquee-daemon.pipe
 
 echo "Script completed" >> $LOGFILE

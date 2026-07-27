@@ -1,0 +1,16 @@
+[Unit]
+Description=simpleServer
+After=network.target
+
+[Service]
+Type=simple
+User=__USER__
+WorkingDirectory=__HOME__/bin
+ExecStart=/usr/bin/python3 __HOME__/bin/simpleServer.py
+Restart=on-failure
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

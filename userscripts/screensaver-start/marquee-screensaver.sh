@@ -2,17 +2,21 @@
 #!/bin/bash
 
 # DEBUG: Log all arguments to a file
+#Set to true to persist log file 
+DEBUG=false
+
 LOGFILE="/rcade/share/userscripts/screensaver-start/marquee-screensaver-start-debug.log"
-rm -f "$LOGFILE"
+
+if [ "$DEBUG" != "true" ]; then
+  rm -f "$LOGFILE"
+fi
+
 touch &LOGFILE
 echo "Initiating marquee screensaver..." >> $LOGFILE
 
-# Notify Home Assistant
-#echo "Notifying Home Assistant..." >> $LOGFILE
-#python3 /rcade/share/userscripts/ha-shutdown.py shutdown
-
-# Send shutdown command to marquee display
+# Send Screensaver Start command to marquee display
 echo "Sending SCREENSAVER-START to marquee display..." >> $LOGFILE
-python3 /rcade/share/userscripts/simpleClient.py "SCREENSAVER-START"
+
+echo "SCREENSAVER-START" > /tmp/marquee-daemon.pipe
 
 echo "SCREENSAVER-START sequence complete">> $LOGFILE

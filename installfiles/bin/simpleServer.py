@@ -12,7 +12,10 @@
 #       https://retropie.org.uk/forum/topic/21464/show-control-panel-layout-before-game-starts-in-retropie-just-like-arcade1up-does/76?_=1581179183756
 #       For the original code and files other than simpleServer.py, you can visit Texacate GitHub site below:
 #       https://github.com/Texacate/Visual-RetroPie-Control-Maps
+#
 # Gonzonia- 
+# Version  5.0  I'm jumping a version here because I've had to split Image and Video into seperate services for both screens to prevent memory issues that were showing up on boot and still allow for the swap from video to image and back. 
+# Version  4.2  Catch only single argument passed for changes to use daemon on client side
 # Version  4.1  Added per-screen default file resolution (default_control/default_marquee priority chains).
 # Version  4.0  Changed to work with Wayland when using a desktop version of PiOS.
 # Version  3.1 (current)  Added control map images
@@ -24,7 +27,7 @@
 #              - FBI is no longer used to display images on the screen. The program FIM is used in its place, as FBI would not work when running as a service.
 #              - Code has been added to function setupServer os default video or image that is in the /home/pi/marquees folder will display or play automatically on when service is started.
 #                If /home/pi/marquees/default.mp4 exists, then default.mp4 video will play. If /home/pi/marquees/default.mp4 does not exists and 
-#                /home/pi/marquees/default.png exists, then default.png image will be displayed.
+#                /home/pi/marquees/default.png exists, then the default.png image will be displayed.
 #              - Added support to play video or default image in /home/pi/marquees/system folder. This operates exactly like the default video and image 
 #                for /home/pi/marquees, except in /home/pi/marquees/system.
 #              - Added new function openVideo to handle starting video.
@@ -61,10 +64,9 @@ def resolveDefaultControl():
     """Return the best available default file for the Waveshare/control screen.
     Priority: default_control.mp4 -> default.mp4 -> default_control.png -> default.png"""
     candidates = [
-        image_dir + "/default_control.mp4",
+        image_dir + "/default_rotated.mp4",
         image_dir + "/default.mp4",
         image_dir + "/default_control.png",
-        image_dir + "/default.png",
     ]
     for path in candidates:
         if os.path.isfile(path):
@@ -127,15 +129,22 @@ def setupServer():
     os.system("sudo systemctl stop MarqueeImage")
     os.system("sudo systemctl stop MarqueeVideo")
     os.system("sudo systemctl stop MarqueeBitLCD")
+    os.system("sudo systemctl stop MarqueeBitLCDImage")
+
+    # Resolve best default files for each screen independently
+    control_path = resolveDefaultControl()
+    marquee_path = resolveDefaultMarquee()
 
     # Resolve best default files for each screen independently
     control_path = resolveDefaultControl()
     marquee_path = resolveDefaultMarquee()
 
     # Write arg files with resolved paths (fall back to legacy defaults if nothing found)
-    videoarg_path = control_path if control_path and control_path.endswith(tuple(video_types)) else image_dir + "/default.mp4"
+    videoarg_path = control_path if control_path and control_path.endswith(tuple(video_types)) else image_dir + "/default_rotated.mp4"
     imagearg_path = control_path if control_path and not control_path.endswith(tuple(video_types)) else image_dir + "/default.png"
-
+    marqueearg_path = control_path if control_path and control_path.endswith(tuple(video_types)) else image_dir + "/default_marquee.mp4"
+    marqueeImgarg_path = control_path if control_path and not control_path.endswith(tuple(video_types)) else image_dir + "/default.png"
+		
     if os.path.exists("/home/pi/bin/videoarg.txt"):
         os.remove("/home/pi/bin/videoarg.txt")
     vidnewfile = open("/home/pi/bin/videoarg.txt", "w+")
@@ -150,29 +159,56 @@ def setupServer():
     imgnewfile.close()
     os.system("sudo chmod 777 /home/pi/bin/imagearg.txt")
     
-        # Remove marqueearg.txt so MarqueeBitLCD uses its built-in default
+     # Remove marqueearg.txt so MarqueeBitLCD uses its built-in default
+      # Remove marqueearg.txt so MarqueeBitLCD uses its built-in default
     if os.path.exists("/home/pi/bin/marqueearg.txt"):
         os.remove("/home/pi/bin/marqueearg.txt")
-
+     
+    if os.path.exists("/home/pi/bin/marqueearg_img.txt"):
+        os.remove("/home/pi/bin/marqueearg_img.txt") 
+    marqueeimgnewfile = open("/home/pi/bin/marqueearg_img.txt", "w+")
+    marqueeimgnewfile.write("Image=" + marqueeImgarg_path + "\n")
+    marqueeimgnewfile.close()
+    os.system("sudo chmod 777 /home/pi/bin/marqueearg_img.txt")
+	
     # Start services if any default files were found
     if control_path or marquee_path:
-        os.system("sudo systemctl stop SplashScreen")
-        time.sleep(2)
+    	#not used anymore
+        #os.system("sudo systemctl stop SplashScreen")
+        #time.sleep(2)
 
         # Start control screen service based on file type
+        #Temporarily test nothing on
         if control_path:
             print(f"Starting control screen with: {control_path}")
-            if control_path.endswith(tuple(video_types)):
-                os.system("sudo systemctl start MarqueeVideo")
-            else:
-                os.system("sudo systemctl start MarqueeImage")
+            #if control_path.endswith(tuple(video_types)):
+            print("Starting MarqueeVideo.Service")
+            os.system("sudo systemctl start MarqueeVideo")
+            time.sleep(2)
+            #Start MarqueeImage service for image overlay layer (Waveshare)
+            os.system("sudo systemctl start MarqueeImage")
+            time.sleep(2)
+   
+           # Hide the image layer so video shows through
+            if control_path and control_path.endswith(tuple(video_types)):
+                if os.path.exists("/tmp/mpv-image.sock"):
+                    print("Stopping image layer on startup")
+                    os.system(f'echo \'{{"command": ["stop"]}}\' | socat - /tmp/mpv-image.sock')
 
         # Start BitLCD service (it will load its own default via MarqueeBitLCD service)
         if marquee_path:
             print(f"Starting marquee screen with: {marquee_path}")
             os.system("sudo systemctl start MarqueeBitLCD")
-
-    # Return the result
+            time.sleep(2)
+            os.system("sudo systemctl start MarqueeBitLCDImage")
+            time.sleep(2)
+            
+            # Hide the image layer so video shows through
+            if marquee_path.endswith(tuple(video_types)):
+                if os.path.exists("/tmp/mpv-bitlcd-image.sock"):
+                    print("Stopping BitLCD image layer on startup")
+                    os.system(f'echo \'{{"command": ["stop"]}}\' | socat - /tmp/mpv-bitlcd-image.sock')            
+    
     return s
 
 def setupConnection():
@@ -194,7 +230,7 @@ def pathBuilder(sysrom):
 
     args = sysrom.split(' ', 1)
     sys = args[0].lower().strip()
-    rom = args[1].lower().strip()
+    rom = args[1].lower().strip() if len(args) > 1 else ""
 
     print("system=" + sys)
     print("rom=" + rom)
@@ -291,24 +327,15 @@ def openImage(path):
 
     time.sleep(0.5)
 
-    # Try to send to running mpv instances via IPC (no desktop flash)
-    if os.path.exists("/tmp/mpv-video.sock"):
-        # Send image to video mpv instance
-        print(f"Sending image to video mpv: {path}")
-        cmd = f'echo \'{{"command": ["loadfile", "{path}"]}}\' | socat - /tmp/mpv-video.sock'
-        os.system(cmd)
-    elif os.path.exists("/tmp/mpv-image.sock"):
-        # Send to image mpv instance
-        print(f"Sending image to image mpv: {path}")
-        cmd = f'echo \'{{"command": ["loadfile", "{path}"]}}\' | socat - /tmp/mpv-image.sock'
+    # Send to image mpv instance (sits on top of video)
+    if os.path.exists("/tmp/mpv-image.sock"):
+        print(f"Sending image to mpv-image: {path}")
+        cmd = f'echo \'{{"command": ["loadfile", "{path}", "replace"]}}\' | socat - /tmp/mpv-image.sock'
         os.system(cmd)
     else:
-        # No mpv running, start MarqueeImage service
-        print("No mpv running, starting MarqueeImage service")
-        os.system("sudo systemctl stop MarqueeVideo")
-        os.system("sudo systemctl stop MarqueeImage")
-        os.system("sudo systemctl start MarqueeImage")
-    
+        print("mpv-image socket not found, restarting MarqueeImage service")
+        os.system("sudo systemctl restart MarqueeImage")
+
     return 0
 
 
@@ -329,47 +356,68 @@ def openVideo(path):
     newfile.close()
     os.system("sudo chmod 777 /home/pi/bin/videoarg.txt")
 
-    # Try to send to running mpv via IPC (no desktop flash)
+    # First hide the image layer
+    if os.path.exists("/tmp/mpv-image.sock"):
+        print("Stopping image layer")
+        cmd = f'echo \'{{"command": ["stop"]}}\' | socat - /tmp/mpv-image.sock'
+        os.system(cmd)
+
+    # Send video to video mpv instance
     if os.path.exists("/tmp/mpv-video.sock"):
-        print(f"Sending video to running mpv: {path}")
-        cmd = f'echo \'{{"command": ["loadfile", "{path}"]}}\' | socat - /tmp/mpv-video.sock'
+        print(f"Sending video to mpv-video: {path}")
+        cmd = f'echo \'{{"command": ["loadfile", "{path}", "replace"]}}\' | socat - /tmp/mpv-video.sock'
         os.system(cmd)
     else:
-        # No mpv running, start MarqueeVideo service
-        print("No mpv running, starting MarqueeVideo service")
-        os.system("sudo systemctl stop MarqueeImage")
-        os.system("sudo systemctl stop MarqueeVideo")
-        os.system("sudo systemctl start MarqueeVideo")
+        print("mpv-video socket not found, restarting MarqueeVideo service")
+        os.system("sudo systemctl restart MarqueeVideo")
 
     return 0
 
 def showOnBitLCD(path):
     """Send an image or video to the BitLCD marquee display"""
     print(f"showOnBitLCD ({path})")
-    if os.path.exists("/tmp/mpv-bitlcd.sock"):
-        cmd = f'echo \'{{"command": ["loadfile", "{path}"]}}\' | socat - /tmp/mpv-bitlcd.sock'
-        os.system(cmd)
-        print(f"Sent to BitLCD: {path}")
-    else:
-        print("BitLCD mpv socket not found, restarting service...")
-        os.system("sudo systemctl restart MarqueeBitLCD")
-        time.sleep(2)
-        if os.path.exists("/tmp/mpv-bitlcd.sock"):
-            cmd = f'echo \'{{"command": ["loadfile", "{path}"]}}\' | socat - /tmp/mpv-bitlcd.sock'
+    
+    is_video = path.endswith(tuple(video_types))
+    
+    if is_video:
+        # Hide the image layer so video shows through
+        if os.path.exists("/tmp/mpv-bitlcd-image.sock"):
+            print("Stopping BitLCD image layer")
+            cmd = f'echo \'{{"command": ["stop"]}}\' | socat - /tmp/mpv-bitlcd-image.sock'
             os.system(cmd)
+
+        # Load the video
+        if os.path.exists("/tmp/mpv-bitlcd.sock"):
+            cmd = f'echo \'{{"command": ["loadfile", "{path}", "replace"]}}\' | socat - /tmp/mpv-bitlcd.sock'
+            os.system(cmd)
+            print(f"Sent video to BitLCD: {path}")
+        else:
+            print("BitLCD video mpv socket not found, restarting service...")
+            os.system("sudo systemctl restart MarqueeBitLCD")
+    else:
+        # Load the image (it will automatically pop over the video)
+        if os.path.exists("/tmp/mpv-bitlcd-image.sock"):
+            cmd = f'echo \'{{"command": ["loadfile", "{path}", "replace"]}}\' | socat - /tmp/mpv-bitlcd-image.sock'
+            os.system(cmd)
+            print(f"Sent image to BitLCD: {path}")
+        else:
+            print("BitLCD image mpv socket not found, restarting service...")
+            os.system("sudo systemctl restart MarqueeBitLCDImage")
 
 
 def clock_thread():
     """Background loop that updates the time on the BitLCD every second"""
     while clock_running:
+        current_time = datetime.now().strftime("%I:%M %p").lstrip("0")
+        
+        cmd_vid = f'echo \'{{"command": ["show-text", "{current_time}", 1100]}}\' | socat - /tmp/mpv-bitlcd.sock'
+        cmd_img = f'echo \'{{"command": ["show-text", "{current_time}", 1100]}}\' | socat - /tmp/mpv-bitlcd-image.sock'
+        
         if os.path.exists("/tmp/mpv-bitlcd.sock"):
-            # Get current time in 12-hour format (e.g., "09:27 PM"). 
-            # lstrip("0") removes the leading zero for single-digit hours.
-            current_time = datetime.now().strftime("%I:%M %p").lstrip("0")
+            os.system(cmd_vid)
+        if os.path.exists("/tmp/mpv-bitlcd-image.sock"):
+            os.system(cmd_img)
             
-            # Send the time to mpv, telling it to display for 1100ms (so it doesn't flicker between updates)
-            cmd = f'echo \'{{"command": ["show-text", "{current_time}", 1100]}}\' | socat - /tmp/mpv-bitlcd.sock'
-            os.system(cmd)
         time.sleep(1)
 
 def showBitLCDClock():
@@ -377,11 +425,12 @@ def showBitLCDClock():
     global clock_running
     print("showBitLCDClock()")
     
-    if os.path.exists("/tmp/mpv-bitlcd.sock"):
-        # Format the OSD placement and size
-        os.system(f'echo \'{{"command": ["set_property", "osd-align-x", "left"]}}\' | socat - /tmp/mpv-bitlcd.sock')
-        os.system(f'echo \'{{"command": ["set_property", "osd-align-y", "top"]}}\' | socat - /tmp/mpv-bitlcd.sock')
-        os.system(f'echo \'{{"command": ["set_property", "osd-font-size", 40]}}\' | socat - /tmp/mpv-bitlcd.sock')
+    # Format OSD for both layers
+    for sock in ["/tmp/mpv-bitlcd.sock", "/tmp/mpv-bitlcd-image.sock"]:
+        if os.path.exists(sock):
+            os.system(f'echo \'{{"command": ["set_property", "osd-align-x", "left"]}}\' | socat - {sock}')
+            os.system(f'echo \'{{"command": ["set_property", "osd-align-y", "top"]}}\' | socat - {sock}')
+            os.system(f'echo \'{{"command": ["set_property", "osd-font-size", 40]}}\' | socat - {sock}')
         
     if not clock_running:
         clock_running = True
@@ -395,11 +444,12 @@ def hideBitLCDClock():
     
     clock_running = False # This tells the background thread to stop looping
     
-    if os.path.exists("/tmp/mpv-bitlcd.sock"):
-        # Immediately push an empty string to wipe the clock off the screen
-        cmd = f'echo \'{{"command": ["show-text", ""]}}\' | socat - /tmp/mpv-bitlcd.sock'
-        os.system(cmd)
-        
+    # Wipe the clock off both screens
+    for sock in ["/tmp/mpv-bitlcd.sock", "/tmp/mpv-bitlcd-image.sock"]:
+        if os.path.exists(sock):
+            cmd = f'echo \'{{"command": ["show-text", ""]}}\' | socat - {sock}'
+            os.system(cmd)
+                    
 def closeImage():
     #=================================================================================================
     # Function name: closeImage

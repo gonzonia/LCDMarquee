@@ -51,30 +51,30 @@ IFS=","
 
 function findCurrentOSType()
 {
-    echo "Finding the current os type"
+    echo "[$(date +'%Y-%m-%d %H:%M:%S')] Finding the current os type"
     local osType=$(uname)
     case "$osType" in
             "Darwin")
             {
-                echo "Running on Mac OSX."
+                echo "[$(date +'%Y-%m-%d %H:%M:%S')] Running on Mac OSX."
                 export MAGICK_HOME="$HOME/Documents/Hobby/Arcade/ImageMagick-7.0.8"
                 export PATH="$MAGICK_HOME/bin:$PATH"
                 export DYLD_LIBRARY_PATH="$MAGICK_HOME/lib/"
-                MAGICK="magick"
+                MAGICK="Magick"
                 font="Arial"
                 fontB="ArialB"
 #               fontB="ComicSansMSB"
             } ;;    
             "Linux")
             {
-                echo "Running on Linux."
+                echo "[$(date +'%Y-%m-%d %H:%M:%S')] Running on Linux."
                 MAGICK=""
                 font="Helvetica"
                 fontB="Helvetica-Bold"
             } ;;
 	    *)
 	    {
-                echo "Unsupported OS, exiting"
+                echo "[$(date +'%Y-%m-%d %H:%M:%S')] Unsupported OS, exiting"
                 exit
             } ;;
     esac
@@ -85,10 +85,10 @@ function get_parent_buttons () {
     local rom="$1"
     local database="$2"
     local name=""
-    echo "Looking for $rom button map data in $database"
+    echo "[$(date +'%Y-%m-%d %H:%M:%S')] Looking for $rom button map data in $database"
     while read -r name b1 b2 b3 b4 b5 b6 b7 b8 b9 b10; do
         if [[ "$rom" == "$name" ]]; then
-            echo "  Found $rom button map text"
+            echo "[$(date +'%Y-%m-%d %H:%M:%S')]   Found $rom button map text"
 	    BTN_DATA="$rom"
             return
         fi
@@ -99,14 +99,14 @@ function get_parent_clone () {
     local rom="$1"
     local name=""
     local cloneof=""
-    echo "Looking through parent/clone data for $rom"
+    echo "[$(date +'%Y-%m-%d %H:%M:%S')] Looking through parent/clone data for $rom"
     while read -r name cloneof; do
         if [[ "$rom" == "$name" ]]; then
 	    PARENT="$name"
 	    if [ "$cloneof" == "" ]; then
-               echo "  Found $rom, is parent rom"
+               echo "[$(date +'%Y-%m-%d %H:%M:%S')]   Found $rom, is parent rom"
 	    else
-               echo "  Found $rom, is clone of $cloneof"
+               echo "[$(date +'%Y-%m-%d %H:%M:%S')]   Found $rom, is clone of $cloneof"
 	       CLONE_OF="$cloneof"
 	    fi
             return
@@ -206,7 +206,7 @@ function calc_point () {
   elif  [ $length -le 40 ]; then point="70"
   else  point="25"
   fi
-  #echo "calc_point ( $string $length ) = $point "
+  #echo "[$(date +'%Y-%m-%d %H:%M:%S')] calc_point ( $string $length ) = $point "
 }
 
 
@@ -214,7 +214,7 @@ function gen_not_found_png () {
   local rom="$1"
   local logo="$LOGO_DIR/$rom.jpg"
   local text=""
-  echo "Creating place-holder image for $rom"
+  echo "[$(date +'%Y-%m-%d %H:%M:%S')] Creating place-holder image for $rom"
 
   if [ "$CLONE_OF" == "" ]; then
     text="$rom.zip"
@@ -223,7 +223,7 @@ function gen_not_found_png () {
   fi
 
   if [ -f $logo ]; then
-    echo "  Adding wheel art $logo"
+    echo "[$(date +'%Y-%m-%d %H:%M:%S')]   Adding wheel art $logo"
     $MAGICK convert $logo -resize 600x200  ./tmp/logo.resized.png
     $MAGICK convert -size 800x480 xc:black \
       ./tmp/logo.resized.png -gravity north  -geometry +0+50  -composite \
@@ -239,13 +239,13 @@ function gen_not_found_png () {
       -gravity south_west -font $fontB -pointsize 20 -fill yellow -annotate +10+10 "$text" \
       ./tmp/$rom.png
   fi
-  echo "Final image ./tmp/$rom.png"
+  echo "[$(date +'%Y-%m-%d %H:%M:%S')] Final image gen_not_found_png ./tmp/$rom.png"
 
 }
 
 
 function  get_button_color () {
-  echo "  Getting buttom map colors for $BTN_DATA"
+  echo "[$(date +'%Y-%m-%d %H:%M:%S')]   Getting buttom map colors for $BTN_DATA"
   if [ "$cp1" == "" ]; then  btn1_img="./src/blk_btn.png"
   else                       btn1_img="./src/grn_btn.png"
   fi
@@ -279,7 +279,7 @@ function  get_button_color () {
 }
   
 function get_font_sizes () {
-  echo "  Calulating fonts for $BTN_DATA"
+  echo "[$(date +'%Y-%m-%d %H:%M:%S')] Calculating fonts for $BTN_DATA"
   calc_point $cp1;  pt1=$point
   calc_point $cp2;  pt2=$point
   calc_point $cp3;  pt3=$point
@@ -290,7 +290,9 @@ function get_font_sizes () {
   calc_point $cp8;  pt8=$point
   calc_point $cp9;  pt9=$point
   calc_point $cp10; pt10=$point
-  #echo "$pt1 $pt2 $pt3 $pt4 $pt5 $pt5"
+  echo "[$(date +'%Y-%m-%d %H:%M:%S')] Fonts Calculated for $BTN_DATA"
+  
+  #echo "[$(date +'%Y-%m-%d %H:%M:%S')] $pt1 $pt2 $pt3 $pt4 $pt5 $pt5"
 }
 
 # Assumed layout of buttons on control panel
@@ -303,21 +305,27 @@ function get_font_sizes () {
 #   
 
 function gen_annotated_png_6btn_cp () {  
+  echo "[$(date +'%Y-%m-%d %H:%M:%S')] Generating Annotated PNG 6btn using $MAGICK"
   local sw=5  
-  $MAGICK convert -size 2400x1440 xc:black \
-    $btn1_img -gravity center  -geometry -550-200 -composite \
-    $btn2_img -gravity center  -geometry   +0-400 -composite \
-    $btn3_img -gravity center  -geometry +550-200 -composite \
-    $btn4_img -gravity center  -geometry -550+300  -composite \
-    $btn5_img -gravity center  -geometry   +0+100 -composite \
-    $btn6_img -gravity center  -geometry +550+300  -composite \
-    -gravity center -font $fontB -pointsize $pt1 -fill white -stroke black -strokewidth $sw -annotate -550+25 "$cp1" \
-    -gravity center -font $fontB -pointsize $pt2 -fill white -stroke black -strokewidth $sw -annotate   +0-175 "$cp2" \
-    -gravity center -font $fontB -pointsize $pt3 -fill white -stroke black -strokewidth $sw -annotate +550+25 "$cp3" \
-    -gravity center -font $fontB -pointsize $pt4 -fill white -stroke black -strokewidth $sw -annotate -550+525 "$cp4" \
-    -gravity center -font $fontB -pointsize $pt5 -fill white -stroke black -strokewidth $sw -annotate   +0+325 "$cp5" \
-    -gravity center -font $fontB -pointsize $pt6 -fill white -stroke black -strokewidth $sw -annotate +550+525 "$cp6" \
-    ./tmp/2_annotated.png
+  MAGICK_THREAD_LIMIT=1 $MAGICK convert \
+    -limit memory 512M -limit map 1G \
+    -size 2400x1440 xc:black \
+    \( -define jpeg:size=1000x1000 "$btn1_img" \) -gravity center -geometry -550-220 -composite \
+    \( -define jpeg:size=1000x1000 "$btn2_img" \) -gravity center -geometry   +0-420 -composite \
+    \( -define jpeg:size=1000x1000 "$btn3_img" \) -gravity center -geometry +550-220 -composite \
+    \( -define jpeg:size=1000x1000 "$btn4_img" \) -gravity center -geometry -550+520 -composite \
+    \( -define jpeg:size=1000x1000 "$btn5_img" \) -gravity center -geometry   +0+320 -composite \
+    \( -define jpeg:size=1000x1000 "$btn6_img" \) -gravity center -geometry +550+520 -composite \
+    -font "$fontB" -fill white -stroke black -strokewidth "$sw" \
+    -pointsize "$pt1" -annotate -650-425 "$cp1" \
+    -pointsize "$pt2" -annotate   +0-625 "$cp2" \
+    -pointsize "$pt3" -annotate +650-425 "$cp3" \
+    -pointsize "$pt4" -annotate -650+275 "$cp4" \
+    -pointsize "$pt5" -annotate   +0+75 "$cp5" \
+    -pointsize "$pt6" -annotate +650+275 "$cp6" \
+    PNG8:./tmp/2_annotated.png
+    echo "[$(date +'%Y-%m-%d %H:%M:%S')] Finished Generating Annotated PNG 6btn"
+
 }
 
 # Assumed layout of buttons on control panel
@@ -365,6 +373,7 @@ function gen_annotated_png_8btn_cp () {
 #
 
 function gen_logo_png () {
+  echo "[$(date +'%Y-%m-%d %H:%M:%S')] Gen Logo ./arcade/$rom.png"
   local text=""
   local rom="$1"
   local logo="$LOGO_DIR/$rom.jpg"
@@ -376,45 +385,45 @@ function gen_logo_png () {
   fi
   
   if [ -f $logo ]; then
-    echo "  Adding wheel art $logo"
-    $MAGICK convert $logo -resize 1500x275  ./tmp/logo.resized.png
+    echo "[$(date +'%Y-%m-%d %H:%M:%S')]   Adding wheel art $logo"
+    $MAGICK convert $logo -scale 1500x275  ./tmp/logo.resized.png
     $MAGICK convert ./tmp/2_annotated.png \
       ./tmp/logo.resized.png -gravity north  -geometry +0+50  -composite \
       -gravity south_west -font $fontB -pointsize 60 -fill yellow -annotate +10+10 "$text" \
-      -resize 800x480 ./arcade/$rom.png
+      -scale 800x480 ./arcade/$rom.png
   else
-    echo "  No wheel art found for $rom at $logo"
+    echo "[$(date +'%Y-%m-%d %H:%M:%S')]   No wheel art found for $rom at $logo"
     $MAGICK convert ./tmp/2_annotated.png \
       -gravity north -font $font -pointsize 200 -fill white -annotate +0+50 "$rom.zip" \
       -gravity south_west -font $fontB -pointsize 60 -fill yellow -annotate +10+10 "$text" \
-      -resize 800x480 ./arcade/$rom.png
+      -scale 800x480 ./arcade/$rom.png
   fi
-  echo "Final image ./arcade/$rom.png"
+  echo "[$(date +'%Y-%m-%d %H:%M:%S')] Final image gen_logo_png ./arcade/$rom.png"
 }  
 
  
 function print_globals () {
-# echo "  LOGO_DIR: $LOGO_DIR"
-# echo "  CLONEDB:  $CLONEDB"
-# echo "  BUTTONDB: $BUTTONDB"
-  echo "  PARENT:   $PARENT"
-  echo "  CLONE_OF: $CLONE_OF"
-  echo "  BTN_DATA: $BTN_DATA"
-  echo "  BUTTON1: \"$b1\""
-  echo "  BUTTON2: \"$b2\""
-  echo "  BUTTON3: \"$b3\""
-  echo "  BUTTON4: \"$b4\""
-  echo "  BUTTON5: \"$b5\""
-  echo "  BUTTON6: \"$b6\""
-  echo "  BUTTON7: \"$b7\""
-  echo "  BUTTON8: \"$b8\""
+# echo "[$(date +'%Y-%m-%d %H:%M:%S')]   LOGO_DIR: $LOGO_DIR"
+# echo "[$(date +'%Y-%m-%d %H:%M:%S')]   CLONEDB:  $CLONEDB"
+# echo "[$(date +'%Y-%m-%d %H:%M:%S')]   BUTTONDB: $BUTTONDB"
+  echo "[$(date +'%Y-%m-%d %H:%M:%S')]   PARENT:   $PARENT"
+  echo "[$(date +'%Y-%m-%d %H:%M:%S')]   CLONE_OF: $CLONE_OF"
+  echo "[$(date +'%Y-%m-%d %H:%M:%S')]   BTN_DATA: $BTN_DATA"
+  echo "[$(date +'%Y-%m-%d %H:%M:%S')]   BUTTON1: \"$b1\""
+  echo "[$(date +'%Y-%m-%d %H:%M:%S')]   BUTTON2: \"$b2\""
+  echo "[$(date +'%Y-%m-%d %H:%M:%S')]   BUTTON3: \"$b3\""
+  echo "[$(date +'%Y-%m-%d %H:%M:%S')]   BUTTON4: \"$b4\""
+  echo "[$(date +'%Y-%m-%d %H:%M:%S')]   BUTTON5: \"$b5\""
+  echo "[$(date +'%Y-%m-%d %H:%M:%S')]   BUTTON6: \"$b6\""
+  echo "[$(date +'%Y-%m-%d %H:%M:%S')]   BUTTON7: \"$b7\""
+  echo "[$(date +'%Y-%m-%d %H:%M:%S')]   BUTTON8: \"$b8\""
 }
 
 
 function gen_rom_button_map () {
   local rom="$1"
   local lay="$2"
-  echo "Building image for $rom.zip on $lay" 
+  echo "[$(date +'%Y-%m-%d %H:%M:%S')] Building image for $rom.zip on $lay" 
   
   if   [ "$lay" == "-fba" ]; then
     map_buttons_retro_pad_fba
@@ -442,27 +451,30 @@ function gen_rom_button_map () {
   else
     gen_annotated_png_6btn_cp
   fi
-  $MAGICK convert ./tmp/2_annotated.png \
-    -resize 800x480 ./arcade/$rom.png
-  echo "Final image ./arcade/$rom.png"
+  MAGICK_THREAD_LIMIT=1 $MAGICK convert \
+    -limit memory 512M -limit map 1G \
+    ./tmp/2_annotated.png \
+    -scale 800x480 \
+    PNG8:./arcade/$rom.png
+    echo "[$(date +'%Y-%m-%d %H:%M:%S')] Final image gen_rom_button_map ./arcade/$rom.png"
 }
 
-echo "========================"
-echo "|     MAIN PROGRAM     |"
-echo "========================"
+echo "[$(date +'%Y-%m-%d %H:%M:%S')] ========================"
+echo "[$(date +'%Y-%m-%d %H:%M:%S')] |     MAIN PROGRAM     |"
+echo "[$(date +'%Y-%m-%d %H:%M:%S')] ========================"
 
 findCurrentOSType
 
-echo "Loading parent_clone database: $CLONEDB"
+echo "[$(date +'%Y-%m-%d %H:%M:%S')] Loading parent_clone database: $CLONEDB"
 readonly CLONEDB
 
-echo "Loading primary button map database:   $BUTTONDB1"
+echo "[$(date +'%Y-%m-%d %H:%M:%S')] Loading primary button map database:   $BUTTONDB1"
 readonly BUTTONDB1
 
-echo "Loading secondary button map database: $BUTTONDB2"
+echo "[$(date +'%Y-%m-%d %H:%M:%S')] Loading secondary button map database: $BUTTONDB2"
 readonly BUTTONDB2
 
-echo "Loading custom button map database:    $BUTTONDBc"
+echo "[$(date +'%Y-%m-%d %H:%M:%S')] Loading custom button map database:    $BUTTONDBc"
 readonly BUTTONDBc
 
 get_parent_clone   $1
@@ -473,14 +485,14 @@ if [ "$BTN_DATA" == "" ]; then get_parent_buttons $1 $BUTTONDB2; fi
 
 if [ "$BTN_DATA" == "" ]; then
     if [ "$CLONE_OF" != "" ]; then
-       echo "  No button data for $1, try parent ($CLONE_OF)"
+       echo "[$(date +'%Y-%m-%d %H:%M:%S')]   No button data for $1, try parent ($CLONE_OF)"
        if [ "$BTN_DATA" == "" ]; then get_parent_buttons $CLONE_OF $BUTTONDB1; fi
        if [ "$BTN_DATA" == "" ]; then get_parent_buttons $CLONE_OF $BUTTONDB2; fi
     fi
 fi
 
 if [ "$BTN_DATA" == "" ]; then
-    echo "  No button data available"
+    echo "[$(date +'%Y-%m-%d %H:%M:%S')]   No button data available"
     gen_not_found_png $1
     print_globals
     exit

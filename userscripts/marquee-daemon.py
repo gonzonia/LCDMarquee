@@ -7,10 +7,10 @@ import logging
 import threading
 
 # Config
-SERVER_HOST = '192.168.99.10'
+SERVER_HOST = '<INSERT IP>'
 SERVER_PORT = 5561
 PIPE_PATH = '/tmp/marquee-daemon.pipe'
-STARTUP_IGNORE_MS = 4000  # Ignore SELECTED for 3 seconds after startup
+STARTUP_IGNORE_MS = 3500  # Ignore SELECTED for 3 seconds after startup
 
 logging.basicConfig(
     filename="/rcade/share/userscripts/marquee-daemon.log",

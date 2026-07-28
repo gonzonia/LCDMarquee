@@ -67,7 +67,9 @@ sudo systemctl edit --full MarqueeImage
   
 8) On the ALU or R-CADE machine- copy the userscripts folder into rcade/share/userscripts. This can be done over ftp or through the network share. 
 
-9) Reboot both systems.  
+9) Update the IP address in `marquee-daemon.py` to the IP address of the Pi. 
+
+10) Reboot both systems.  
 
 
 Because I'm using this on an R-CADE system running on an AtGames Legends Ultimate cabinet, not Retropie,  there are some additional scripts I've created that can be triggered at events like shutting down. This way the pi shuts down gracefully when the R-CADE system is shut down or rebooted. 

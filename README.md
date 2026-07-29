@@ -91,5 +91,7 @@ With the two screens, the geometry wasn't what would be expected. The smaller sc
 For this to work on both screens, I had to add some additional items to my `/boot/firmware/cmdline.txt` and `/boot/firmware/config.txt`. I've included the addtitions in a `cmdline.txt` file and my entire `config.txt` in case you're having trouble getting things to work. 
 
 [Instructions for Setting up Splashscreens](SPLASHSCREEN.md)
+
+<BR>
 ***Permission was obtained to include R-CADE images in this project. R-Cade and all associated R-Cade content is legal property of Retro-Center and goverened by the R-Cade license agreement. Unauthorized distribution, duplication, or usage is prohibited.<BR>
 See the LICENSE.md file at the top-level directory of the Retro-Center GitHub releases at https://github.com/retro-center/rcade_releases/blob/master/LICENSE.md***

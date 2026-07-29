@@ -65,13 +65,14 @@ I needed to pre-rotate the videos that are displayed on the Control Map Screen. 
 sudo systemctl edit --full MarqueeImage 
 ```
   
-8) On the ALU or R-CADE machine- copy the userscripts folder into rcade/share/userscripts. This can be done over ftp or through the network share.  <See note below.>
+8) On the ALU or R-CADE machine- copy the userscripts folder into rcade/share/userscripts. This can be done over ftp or through the network share.  _See note below_
 
 9) Update the IP address in `marquee-daemon.py` to the IP address of the Pi. 
 
-10) Reboot both systems.  
-
-**Note regarding the userscripts**: When booting the system runs the scripts in this order System Ready > Game Selected (last game played) > System Selected (if start is set to go to a system. What this means is that you may see a flicker on the marquee of the Last Game Played. In the marquee-daemon.py script there is a variable to try to prevent this. If this is set too high, the initial System Selected won't be sent. 
+10) Reboot both systems.
+    
+_
+**Note regarding the userscripts**: When booting the system runs the scripts in this order System Ready > Game Selected (last game played) > System Selected (if start is set to go to a system. What this means is that you may see a flicker on the marquee of the Last Game Played. In the marquee-daemon.py script there is a variable to try to prevent this. If this is set too high, the initial System Selected won't be sent. _
 
 
 Because I'm using this on an R-CADE system running on an AtGames Legends Ultimate cabinet, not Retropie,  there are some additional scripts I've created that can be triggered at events like shutting down. This way the pi shuts down gracefully when the R-CADE system is shut down or rebooted. 

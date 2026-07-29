@@ -46,6 +46,7 @@ Control Map Display (Waveshare)
 * Staggered 6-button layout matching physical arcade panel (X/Y/Z top row, A/B/C bottom row)
 * Button colors indicate active (green) vs inactive (black) buttons
 
+https://github.com/user-attachments/assets/e5ae25ce-5a70-4d9a-8152-19e71b1e17ed
 
 To install-
 

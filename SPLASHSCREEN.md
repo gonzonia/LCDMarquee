@@ -3,6 +3,12 @@ These files are for a Plymouth dual-screen splash screen with a custom synthwave
 * Waveshare shows vertical control map splash image
 * Animated progress circle in the overlap zone between displays
 
+
+https://github.com/user-attachments/assets/30cc3333-d8f2-4143-8955-b015cfc9aaa3
+
+
+
+
 # Plymouth Theme Installation Guide
 Follow these steps to install and configure the custom boot splash theme.
 

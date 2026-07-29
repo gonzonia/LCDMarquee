@@ -71,8 +71,8 @@ sudo systemctl edit --full MarqueeImage
 
 10) Reboot both systems.
     
-_
-**Note regarding the userscripts**: When booting the system runs the scripts in this order System Ready > Game Selected (last game played) > System Selected (if start is set to go to a system. What this means is that you may see a flicker on the marquee of the Last Game Played. In the marquee-daemon.py script there is a variable to try to prevent this. If this is set too high, the initial System Selected won't be sent. _
+
+_Note regarding the userscripts: When booting the system runs the scripts in this order System Ready > Game Selected (last game played) > System Selected (if start is set to go to a system. What this means is that you may see a flicker on the marquee of the Last Game Played. In the marquee-daemon.py script there is a variable to try to prevent this. If this is set too high, the initial System Selected won't be sent._
 
 
 Because I'm using this on an R-CADE system running on an AtGames Legends Ultimate cabinet, not Retropie,  there are some additional scripts I've created that can be triggered at events like shutting down. This way the pi shuts down gracefully when the R-CADE system is shut down or rebooted. 

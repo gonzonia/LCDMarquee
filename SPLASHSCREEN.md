@@ -43,7 +43,7 @@ Depending on the OS version, this file is located at `/boot/firmware/cmdline.txt
 sudo nano /boot/firmware/cmdline.txt
 ```
 
-Append the following parameters to the **end of the existing line**. It must remain a single, unbroken line of text:
+Append the following parameters to the **end of the existing line**. It must remain a single, unbroken line of text (it may already be there in a different order):
     
 ```
 splash quiet plymouth.ignore-serial-consoles

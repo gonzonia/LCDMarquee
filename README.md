@@ -58,6 +58,36 @@ To install-
    ```sudo python3 /home/<USERNAME>/installfiles/lcdmarqueesetup.py```
 
    This will walk through the installation of the necessary services and packages.
+   
+   # LCD Marquee Setup Script
+   
+	## Execution Flow
+	
+	### 1. Initialization and Environment Setup
+	* **Helper Functions:** Initializes utility functions to handle user prompts (yes/no queries), substitute variables within `.service` configuration files, and accurately detect the executing user.
+	* **Path Configuration:** Confirms the target username and establishes absolute paths for necessary directories, including `bin`, `marquees`, and `control_maps`.
+	
+	### 2. Pre-Installation Cleanup
+	* **Service Termination:** Stops existing systemd services related to the LCD marquee (e.g., `simpleServer`, `MarqueeImage`, `MarqueeVideo`, `HideConsole`, `SplashScreen`) to prevent conflicts during installation.
+	
+	### 3. File and Asset Deployment
+	* **Directory Management:** Creates required directories and assigns appropriate read, write, and execute permissions.
+	* **Asset Copying:** Prompts for permission to copy and overwrite default control map files and default media assets (such as `default.png`, `default_marquee.mp4`, and `screensaver_marquee.mp4`) into the target directories.
+	
+	### 4. Dependency Installation
+	* **System Updates:** Executes system updates via `apt-get` to refresh package repositories.
+	* **Package Installation:** Installs required media handling software, specifically `mpv` (for video playback) and `imagemagick` (for image manipulation).
+	
+	### 5. System Configuration
+	* **Permissions:** Configures passwordless `sudo` access for the target user by dynamically writing a rule to `/etc/sudoers.d/`.
+	* **Service Registration:** Copies `.service` templates to system directories (such as `/etc/systemd/system/`), injects user-specific variables (like UID and home directory), reloads the systemd daemon, and enables `simpleServer.service` to launch automatically on boot.
+	
+	### 6. Boot Sequence Modifications
+	* **Boot File Backups:** Creates backup copies of standard boot configuration files (`/boot/firmware/config.txt` and `cmdline.txt`).
+	* **Silent Boot Adjustments:** Prompts to inject parameters into the boot files to disable the rainbow splash screen and suppress console boot text, ensuring a seamless visual startup.
+	
+	### 7. Finalization
+	* **System Reboot:** Prompts to reboot the hardware to apply all system-level changes and start the newly configured services.
 
 7) Copy over any marquees into the appropriate system folder (for R-CADE, place all of the arcade collection marquees into MAME).
 

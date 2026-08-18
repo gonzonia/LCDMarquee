@@ -5,6 +5,7 @@ import sys
 import getpass
 import pwd
 import grp
+import subprocess
 
 def query_yes_no(question, default="yes"):
     """Ask a yes/no question via raw_input() and return their answer.
@@ -278,6 +279,9 @@ time.sleep(10)
 print("***** Running update... *****")
 os.system("sudo apt-get update --fix-missing")
 
+#make sudo not require a password every time it's run
+configure_passwordless_sudo(username)
+
 #Install FIM
 #print("***** Installing FIM... *****")
 #os.system("sudo apt-get -y install fim")
@@ -374,3 +378,36 @@ else:
 rebootanswer=query_yes_no("Reboot is required. Do you wish to reboot now?")
 if rebootanswer == True:
     os.system("sudo reboot")
+
+def configure_passwordless_sudo(username="pi"):
+    # Ensure the script is running with root privileges
+    if os.geteuid() != 0:
+        print("Error: This script must be run as root (using sudo).", file=sys.stderr)
+        sys.exit(1)
+        
+    config_file_path = f"/etc/sudoers.d/dont-prompt-{username}"
+    # The clean syntax for NOPASSWD configuration
+    sudo_rule = f"{username} ALL=(ALL:ALL) NOPASSWD: ALL\n"
+    
+    try:
+        # Write the file directly using system tools to safely handle root paths
+        process = subprocess.Popen(
+            ['tee', config_file_path], 
+            stdin=subprocess.PIPE, 
+            stdout=subprocess.PIPE, 
+            stderr=subprocess.PIPE,
+            text=True
+        )
+        stdout, stderr = process.communicate(input=sudo_rule)
+        
+        if process.returncode != 0:
+            raise Exception(stderr)
+            
+        # Sudoers configuration files MUST have strict 0440 permissions
+        os.chmod(config_file_path, 0o440)
+        print(f"Success: Passwordless sudo configured for user '{username}'.")
+        print(f"Rule written to: {config_file_path}")
+        
+    except Exception as e:
+        print(f"An error occurred while writing configuration: {e}", file=sys.stderr)
+        sys.exit(1)

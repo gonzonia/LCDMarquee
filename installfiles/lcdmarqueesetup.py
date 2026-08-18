@@ -113,7 +113,7 @@ CONTROL_MAPS_DIR = f"{HOME_DIR}/control_maps"
 # not to any user's home directory, since it ships side-by-side with it
 # regardless of which user is being installed for or who ran the script.
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-INSTALLFILES_DIR = f"{SCRIPT_DIR}/installfiles"
+INSTALLFILES_DIR = f"{SCRIPT_DIR}"
 
 user_info = pwd.getpwnam(username)
 user_uid = user_info.pw_uid
@@ -140,10 +140,6 @@ os.system("sudo systemctl stop SplashScreen.service")
 
 
 
-#Copy original simpleServer.py.ORIGINAL file
-print("***** Copy simpleServer.py.ORIGINAL file *****")
-if not os.path.exists(f"{BIN_DIR}/simpleServer.py.ORIGINAL"):
-    os.system(f"sudo cp {INSTALLFILES_DIR}/bin/simpleServer.py.ORIGINAL {BIN_DIR}/simpleServer.py.ORIGINAL")
 
 #create needed directories
 if not os.path.exists(BIN_DIR):
@@ -158,10 +154,7 @@ if not os.path.exists(f"{MARQUEES_DIR}/arcade"):
     os.makedirs(f"{MARQUEES_DIR}/arcade")
     os.system(f"sudo chmod 777 {MARQUEES_DIR}/arcade")
 
-
-
-
-#Copy new simpleServer.py file
+#Copy simpleServer.py file
 print("***** Copy new simpleServer.py file *****")
 if os.path.exists(f"{BIN_DIR}/simpleServer.py"):
     os.system(f"sudo cp {BIN_DIR}/simpleServer.py {BIN_DIR}/simpleServer.py.OLD")
@@ -332,7 +325,8 @@ else:
 #Copy new cmdline.txt file and set permissions on new cmdline.txt file
 print("***** Update cmdline.txt file... *****")
 print("Will now edit the cmdline.txt file to disable all text on bootup.")
-cmdlineanswer=query_yes_no("Do you wish to update cmdline.txt? Requires sudo. (Select n if you already updated file)")
+cmdlineanswer=query_yes_no("Do you wish to update cmdline.txt? Requires sudo. Will add 'console=tty3 logo.nologo quiet loglevel=3 vt.global_cursor_default=0' (Select n if you already updated file)")
+
 if cmdlineanswer == True:
     # Determine the correct path
     cmdpath = "/boot/firmware/cmdline.txt"

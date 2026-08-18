@@ -55,7 +55,7 @@ To install-
 4) Change to Auto-login at boot (in raspi-config)
 5) Upload the installfiles directory
 6) Run the install script
-   ```sudo python3 /home/<USERNAME>/installfiles/bin/lcdmarqueesetup.py```
+   ```sudo python3 /home/<USERNAME>/installfiles/lcdmarqueesetup.py```
 
    This will walk through the installation of the necessary services and packages.
 

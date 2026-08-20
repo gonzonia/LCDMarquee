@@ -109,6 +109,7 @@ HOME_DIR = f"/home/{username}"
 BIN_DIR = f"{HOME_DIR}/bin"
 MARQUEES_DIR = f"{HOME_DIR}/marquees"
 CONTROL_MAPS_DIR = f"{HOME_DIR}/control_maps"
+CONFIG_DIR = f"{HOME_DIR}/.config"
 
 # installfiles is always resolved relative to this script's own location,
 # not to any user's home directory, since it ships side-by-side with it
@@ -262,6 +263,20 @@ os.system("sudo apt-get -y install mpv")
 print("Pausing for 10 seconds...")
 time.sleep(10)
 
+
+#Run updates again
+print("***** Running update... *****")
+os.system("sudo apt-get update --fix-missing")
+#os.system("sudo apt-get upgrade -y")
+
+#Install socat
+print("***** Installing socat... *****")
+os.system("sudo apt-get -y install socat")
+
+#Pause for 10 seconds
+print("Pausing for 10 seconds...")
+time.sleep(10)
+
 #Run updates again
 print("***** Running update... *****")
 os.system("sudo apt-get update --fix-missing")
@@ -278,6 +293,20 @@ time.sleep(10)
 #Run update again
 print("***** Running update... *****")
 os.system("sudo apt-get update --fix-missing")
+
+#Ask if new screensaver_marquee.mp4 file should be created and if so, copy new file.
+print("***** Copy new .config files for mpv and labwc  *****")
+configfilesanswer=query_yes_no("Do you wish to replace .config files for mpv and labwc - Backups will be created? (Select n if you have made edits to either of these files and then compare your edits to the files in installfiles/config)")
+if configfilesanswer == True:
+    if os.path.exists(f"{CONFIG_DIR}/labwc/rc.xml"):
+        os.system(f"sudo cp {CONFIG_DIR}/labwc/rc.xml {CONFIG_DIR}/labwc/rc.xml.OLD")
+        os.remove(f"{CONFIG_DIR}/labwc/rc.xml")
+    os.system(f"sudo cp {INSTALLFILES_DIR}/config/labwc/rc.xml {CONFIG_DIR}/labwc/rc.xml")   
+
+    if os.path.exists(f"{CONFIG_DIR}/mpv/mpv.conf"):
+        os.system(f"sudo cp {CONFIG_DIR}//mpv/mpv.conf {CONFIG_DIR}/mpv/mpv.conf.OLD")
+        os.remove(f"{CONFIG_DIR}/mpv/mpv.conf")
+    os.system(f"sudo cp {INSTALLFILES_DIR}/config/mpv/mpv.conf {CONFIG_DIR}/mpv/mpv.conf")   
 
 #make sudo not require a password every time it's run
 configure_passwordless_sudo(username)

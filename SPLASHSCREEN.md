@@ -57,7 +57,7 @@ Restart the Raspberry Pi to verify the custom splash screen renders correctly du
 ```
 sudo reboot
 ```
-#If on a Pi 5 and booting to an SSD. Make sure you do not have it trying to boot from the network as part of the boot order or you will see the red & white "Configure this Pi" screen before the plymouth splash screen. 
+**If on a Pi 5 and booting to an SSD. Make sure you do not have it trying to boot from the network as part of the boot order or you will see the red & white "Configure this Pi" screen before the plymouth splash screen.**
 
 ---
 [Back to main Readme](README.md)

@@ -15,5 +15,5 @@ ExecStart=/usr/bin/mpv --no-audio --loop-file=inf  --no-input-cursor --no-input-
 Restart=no
 #ExecStop=-pkill -f "mpv.*bitlcd"
 
-[Install]
-WantedBy=graphical.target
+# [Install] section intentionally omitted - managed by simpleServer
+#WantedBy=graphical.target

@@ -15,5 +15,5 @@ ExecStart=/usr/bin/mpv --no-audio --border=no --video-rotate=270 --fullscreen --
 Restart=no
 #ExecStop=-pkill -f "mpv.*mpv-image"
 
-[Install]
-WantedBy=graphical.target
+# [Install] section intentionally omitted - managed by simpleServer
+#WantedBy=graphical.target

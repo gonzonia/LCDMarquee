@@ -295,18 +295,18 @@ print("***** Running update... *****")
 os.system("sudo apt-get update --fix-missing")
 
 #Ask if new screensaver_marquee.mp4 file should be created and if so, copy new file.
-print("***** Copy new .config files for mpv and labwc  *****")
-configfilesanswer=query_yes_no("Do you wish to replace .config files for mpv and labwc - Backups will be created? (Select n if you have made edits to either of these files and then compare your edits to the files in installfiles/config)")
+print("***** Copy new .config file for labwc  *****")
+configfilesanswer=query_yes_no("Do you wish to replace the .config file for labwc - Backup will be created? (Select n if you have made edits  and then compare your edits to the file in installfiles/config)")
 if configfilesanswer == True:
     if os.path.exists(f"{CONFIG_DIR}/labwc/rc.xml"):
         os.system(f"sudo cp {CONFIG_DIR}/labwc/rc.xml {CONFIG_DIR}/labwc/rc.xml.OLD")
         os.remove(f"{CONFIG_DIR}/labwc/rc.xml")
     os.system(f"sudo cp {INSTALLFILES_DIR}/config/labwc/rc.xml {CONFIG_DIR}/labwc/rc.xml")   
 
-    if os.path.exists(f"{CONFIG_DIR}/mpv/mpv.conf"):
-        os.system(f"sudo cp {CONFIG_DIR}//mpv/mpv.conf {CONFIG_DIR}/mpv/mpv.conf.OLD")
-        os.remove(f"{CONFIG_DIR}/mpv/mpv.conf")
-    os.system(f"sudo cp {INSTALLFILES_DIR}/config/mpv/mpv.conf {CONFIG_DIR}/mpv/mpv.conf")   
+#    if os.path.exists(f"{CONFIG_DIR}/mpv/mpv.conf"):
+#        os.system(f"sudo cp {CONFIG_DIR}//mpv/mpv.conf {CONFIG_DIR}/mpv/mpv.conf.OLD")
+#        os.remove(f"{CONFIG_DIR}/mpv/mpv.conf")
+#    os.system(f"sudo cp {INSTALLFILES_DIR}/config/mpv/mpv.conf {CONFIG_DIR}/mpv/mpv.conf")   
 
 #make sudo not require a password every time it's run
 configure_passwordless_sudo(username)
@@ -329,6 +329,13 @@ os.system("sudo systemctl daemon-reload")
 
 print("***** Set SimpleServer service to run on bootup... *****")
 os.system("sudo systemctl enable simpleServer.service")
+
+print("***** Explicitly disable others that are managed by simpleServer... *****")
+os.system("sudo systemctl disable MarqueeVideo 2>/dev/null || true")
+os.system("sudo systemctl disable MarqueeImage 2>/dev/null || true")
+os.system("sudo systemctl disable MarqueeBitLCDImage 2>/dev/null || true")
+os.system("sudo systemctl disable MarqueeBitLCD 2>/dev/null || true")
+
 
 #Make copy of config.txt and cmdline.txt files
 print("***** Backing up config.txt and cmdline.txt... *****")

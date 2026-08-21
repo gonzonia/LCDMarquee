@@ -15,5 +15,5 @@ ExecStart=/usr/bin/mpv --no-audio --fullscreen --border=no --loop-file=inf --vo=
 Restart=no
 #ExecStop=-pkill -f "mpv.*bitlcd-marquee-image"
 
-[Install]
-WantedBy=graphical.target
+# [Install] section intentionally omitted - managed by simpleServer
+#WantedBy=graphical.target
